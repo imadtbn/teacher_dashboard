@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مرجع المنشور الوزاري 522/2026 - لوحة المعلم الذكية</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-900" data-fixed-page="rules">
+
+  <header class="bg-gradient-to-l from-emerald-950 via-teal-900 to-slate-900 text-white shadow-lg no-print">
+    <div class="max-w-7xl mx-auto px-4 py-3.5 sm:px-6 lg:px-8">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 font-bold text-2xl shrink-0">
+            🎓
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs bg-emerald-500/30 border border-emerald-400/40 text-emerald-100 px-2.5 py-0.5 rounded-full font-semibold">وزارة التربية الوطنية - الجزائر</span>
+              <span class="text-xs bg-amber-500/30 border border-amber-400/40 text-amber-100 px-2.5 py-0.5 rounded-full font-semibold">المنشور الوزاري رقم 522/و.ت.و/م.ع.ت/2026</span>
+            </div>
+            <h1 class="text-lg sm:text-xl font-extrabold tracking-tight mt-1">لوحة المعلم الذكية لحساب المعدلات (بنية متعددة الصفحات حسب الأطوار)</h1>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <input id="excelFileInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+          <button id="btnTriggerExcelImport" type="button" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold transition flex items-center gap-1.5 shadow-sm border border-emerald-400/30">
+            <span>📂</span><span>استيراد Excel</span>
+          </button>
+          <button id="btnOpenPasteModal" type="button" class="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 border border-white/15">
+            <span>📋</span><span>لصق أسماء</span>
+          </button>
+          <button id="btnExportExcel" type="button" class="px-3 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs sm:text-sm font-extrabold transition flex items-center gap-1.5 shadow-sm">
+            <span>📊</span><span>تصدير Excel (.xlsx)</span>
+          </button>
+          <button id="btnPrintCurrent" type="button" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-extrabold transition flex items-center gap-1.5 shadow-sm">
+            <span>🖨️</span><span>طباعة</span>
+          </button>
+          <button id="btnResetDemo" type="button" class="px-2.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/40 text-rose-100 text-xs font-semibold transition border border-rose-400/30" title="استعادة البيانات النموذجية">
+            <span>🔄</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-3 pt-3 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div class="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-1.5 border border-white/15">
+          <span class="text-xs text-emerald-200 font-bold shrink-0">👨‍🏫 اسم الأستاذ(ة):</span>
+          <input id="teacherNameInput" type="text" placeholder="أدخل اسم ولقب الأستاذ..." class="w-full bg-transparent text-white text-xs sm:text-sm font-bold placeholder-slate-300 focus:outline-none" />
+        </div>
+        <div class="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-1.5 border border-white/15">
+          <span class="text-xs text-emerald-200 font-bold shrink-0">🏫 المؤسسة:</span>
+          <input id="schoolNameInput" type="text" placeholder="اسم المدرسة / المتوسطة / الثانوية..." class="w-full bg-transparent text-white text-xs sm:text-sm font-bold placeholder-slate-300 focus:outline-none" />
+        </div>
+        <div class="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-1.5 border border-white/15">
+          <span class="text-xs text-emerald-200 font-bold shrink-0">📅 السنة الدراسية:</span>
+          <input id="schoolYearInput" type="text" value="2026 / 2027" class="w-full bg-transparent text-white text-xs sm:text-sm font-bold placeholder-slate-300 focus:outline-none" />
+        </div>
+      </div>
+
+      <nav class="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 pt-2">
+        <a href="index.html" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 bg-white/10 text-white hover:bg-white/20 shrink-0"><span>🏠</span><span>الصفحة الرئيسية</span></a>
+<a href="primary.html" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 bg-white/10 text-white hover:bg-white/20 shrink-0"><span>📙</span><span>صفحة الطور الابتدائي</span></a>
+<a href="middle.html" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 bg-white/10 text-white hover:bg-white/20 shrink-0"><span>📘</span><span>صفحة الطور المتوسط</span></a>
+<a href="secondary.html" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 bg-white/10 text-white hover:bg-white/20 shrink-0"><span>📗</span><span>صفحة الطور الثانوي</span></a>
+<a href="rules.html" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-1.5 bg-white text-emerald-950 shadow-sm shrink-0"><span>⚖️</span><span>المنشور الوزاري 522/2026</span></a>
+      </nav>
+    </div>
+  </header>
+  <div id="toastContainer" class="fixed bottom-4 left-4 z-50 hidden max-w-md bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-emerald-500/40 flex items-center gap-2.5 text-sm font-medium no-print">
+    <span id="toastIcon">✅</span>
+    <span id="toastMessage">تم الحفظ بنجاح</span>
+  </div>
+  <div class="hidden print:block max-w-7xl mx-auto px-6 pt-4 pb-2 border-b-2 border-slate-800 text-xs">
+    <div class="text-center font-bold text-sm">الجمهورية الجزائرية الديمقراطية الشعبية — وزارة التربية الوطنية</div>
+    <div class="flex justify-between items-center mt-2 font-bold">
+      <div>المؤسسة: <span id="printSchoolName"></span></div>
+      <div>الأستاذ(ة): <span id="printTeacherName"></span></div>
+      <div>السنة الدراسية: <span id="printSchoolYear"></span></div>
+    </div>
+  </div>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-5 sm:px-6 lg:px-8 space-y-6">
+
+    <section id="pageRules" class="space-y-5">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-6">
+        <div class="border-b border-slate-200 pb-4">
+          <h2 class="text-lg font-extrabold text-slate-900">⚖️ الدليل التقني الكامل للمنشور الوزاري رقم 522/و.ت.و/م.ع.ت/2026 (المراحل الثلاث)</h2>
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">مرجع شامل لقواعد التقويم البيداغوجي وحساب المعدلات في الابتدائي والمتوسط والثانوي للسنة الدراسية 2026/2027.</p>
+        </div>
+
+        <div class="bg-sky-50/70 border border-sky-200 rounded-2xl p-4 sm:p-5 space-y-3">
+          <h3 class="text-base font-extrabold text-sky-950">📙 أولاً: مرحلة التعليم الابتدائي (الصفحتان 1 و 2 من المنشور)</h3>
+          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+            يشمل التقييم المستمر مواد اللغات، الرياضيات، والأنشطة الفنية والبدنية بناءً على: (أ) مشاركة التلميذ في القسم، (ب) المنتجات الكتابية، (ج) المنتجات الفنية والأداء العملي. يُبرمج اختبار فصلي واحد لكل مادة <strong>باستثناء التربية الموسيقية والتشكيلية والبدنية</strong>. في السنة 1 ابتدائي يكون التقييم وصفياً نوعياً في الفصول الثلاثة والانتقال آلياً للسنة 2. وفي الفصل الأول فقط يكون التقييم وصفياً للإنجليزية (سنة 3) والفرنسية والأمازيغية (سنة 4).
+          </p>
+        </div>
+
+        <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 sm:p-5 space-y-3">
+          <h3 class="text-base font-extrabold text-emerald-950">📘 ثانياً: مرحلة التعليم المتوسط (الصفحتان 3 و 4 من المنشور)</h3>
+          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+            تُبنى علامة تقييم النشاطات على 3 معايير: الانضباط والمواظبة، أنشطة التعلم داخل القسم، وأنشطة التعلم خارج القسم. يُحسب <code>م.ت.م = (تقييم النشاطات + علامة الفرض) ÷ 2</code> ثم <code>م.ف.م.ت = (م.ت.م + علامة الاختبار من 40) ÷ 3</code>.
+          </p>
+        </div>
+
+        <div class="bg-teal-50/60 border border-teal-200 rounded-2xl p-4 sm:p-5 space-y-3">
+          <h3 class="text-base font-extrabold text-teal-950">📗 ثالثاً: مرحلة التعليم الثانوي العام والتكنولوجي (الصفحات 5، 6، 7 من المنشور)</h3>
+          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+            في مواد اللغات والأعمال التطبيقية يُقسم مجموع <code>(التقييم المستمر + الفرض + الشفوي/التطبيقي + الاختبار من 40)</code> على <strong>5</strong>، وفي بقية المواد يُقسم مجموع <code>(التقييم المستمر + الفرض + الاختبار من 40)</code> على <strong>4</strong>. وتُقيّم المشاريع الدراسية والمطالعة بعلامة من 20 دون معامل، حيث يُضاف <strong>ما تجاوز 10 نقاط (10/20)</strong> إلى مجموع جداءات المواد قبل القسمة على مجموع المعاملات.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="modalRubricCalc" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 my-8">
+      <div class="px-5 py-3.5 bg-gradient-to-l from-emerald-900 to-teal-800 text-white flex items-center justify-between">
+        <div>
+          <h3 class="text-sm sm:text-base font-extrabold flex items-center gap-2">
+            <span>🧮</span><span id="rubricModalTitle">حاسبة شبكة المعايير البيداغوجية (دفتر التقويم المستمر)</span>
+          </h3>
+          <p id="rubricModalSubtitle" class="text-[11px] text-emerald-100 mt-0.5"></p>
+        </div>
+        <button id="btnCloseRubricModal" type="button" class="text-white/80 hover:text-white text-sm font-bold">✕</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div id="rubricSectionsContainer" class="space-y-4"></div>
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <div class="text-xs font-bold text-slate-700 mb-1">📝 التبرير البيداغوجي المولد آلياً (لدفتر التقويم المستمر ودفتر المراسلة):</div>
+          <input id="rubricGeneratedJustification" type="text" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800" />
+        </div>
+        <div class="flex items-center justify-between pt-2 border-t border-slate-200">
+          <div class="text-xs sm:text-sm font-extrabold text-emerald-900">
+            العلامة المحسوبة: <span id="rubricPreviewTotal" class="num-cell text-base text-emerald-700">0.00</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnCancelRubric" type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">إلغاء</button>
+            <button id="btnApplyRubric" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm">اعتماد العلامة والتبرير</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalReportCard" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden border border-slate-200 my-8">
+      <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between no-print">
+        <h3 class="text-sm sm:text-base font-bold">📄 كشف النقاط الفردي التفصيلي للتلميذ</h3>
+        <div class="flex items-center gap-2">
+          <button id="btnPrintModalReport" type="button" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold">🖨️ طباعة الكشف</button>
+          <button id="btnCloseReportModal" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold">✕ إغلاق</button>
+        </div>
+      </div>
+      <div id="reportCardContent" class="p-5 sm:p-6 space-y-4 text-xs sm:text-sm"></div>
+    </div>
+  </div>
+
+  <div id="modalImportNames" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
+      <div class="px-5 py-3.5 bg-emerald-900 text-white flex items-center justify-between">
+        <h3 class="text-sm sm:text-base font-bold">📋 لصق سريع لقائمة التلاميذ</h3>
+        <button id="btnCloseImportModal" type="button" class="text-white/80 hover:text-white text-sm font-bold">✕</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div>
+          <label for="importTargetSelect" class="block text-xs font-bold text-slate-700 mb-1">الوجهة في الطور الحالي:</label>
+          <select id="importTargetSelect" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs sm:text-sm font-semibold">
+            <option value="both">إضافة إلى الفوج الحالي + قسم الأستاذ الرئيسي معاً</option>
+            <option value="subject">إضافة إلى الفوج الحالي فقط (وضع أستاذ المادة)</option>
+            <option value="homeroom">إضافة إلى قسم الأستاذ الرئيسي فقط</option>
+          </select>
+        </div>
+        <textarea id="importNamesTextarea" rows="7" placeholder="بن علي محمد&#10;بوزيد أمينة..." class="w-full rounded-xl border border-slate-300 p-3 text-xs sm:text-sm"></textarea>
+        <div class="flex items-center justify-end gap-2">
+          <button id="btnCancelImport" type="button" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">إلغاء</button>
+          <button id="btnConfirmImport" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">استيراد الأسماء الآن</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalNewGroup" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+      <div class="px-5 py-3.5 bg-emerald-900 text-white flex items-center justify-between">
+        <h3 class="text-sm sm:text-base font-bold">+ إنشاء فوج تربوي جديد في هذا الطور</h3>
+        <button id="btnCloseNewGroupModal" type="button" class="text-white/80 hover:text-white text-sm font-bold">✕</button>
+      </div>
+      <div class="p-5 space-y-3">
+        <div>
+          <label for="newGroupNameInput" class="block text-xs font-bold text-slate-700 mb-1">اسم الفوج</label>
+          <input id="newGroupNameInput" type="text" placeholder="مثال: فوج 2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs sm:text-sm font-semibold" />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label for="newGroupSubjectInput" class="block text-xs font-bold text-slate-700 mb-1">اسم المادة</label>
+            <input id="newGroupSubjectInput" type="text" value="اللغة العربية" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs sm:text-sm font-semibold" />
+          </div>
+          <div>
+            <label for="newGroupCoeffInput" class="block text-xs font-bold text-slate-700 mb-1">المعامل</label>
+            <input id="newGroupCoeffInput" type="number" min="1" max="10" value="2" class="num-input w-full rounded-xl border border-slate-300 px-3 py-2 text-xs sm:text-sm font-bold" />
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button id="btnCancelNewGroup" type="button" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">إلغاء</button>
+          <button id="btnConfirmNewGroup" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">إنشاء الفوج</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalEditSubjects" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 my-8">
+      <div class="px-5 py-3.5 bg-teal-900 text-white flex items-center justify-between">
+        <h3 class="text-sm sm:text-base font-bold">⚙️ تخصيص المواد ومعاملاتها لهذا الطور</h3>
+        <button id="btnCloseSubjectsModal" type="button" class="text-white/80 hover:text-white text-sm font-bold">✕</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div id="subjectsConfigList" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <button id="btnAddConfigSubject" type="button" class="px-3 py-1.5 rounded-xl bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold">+ إضافة مادة جديدة</button>
+          <div class="flex items-center gap-2">
+            <button id="btnCancelSubjectsModal" type="button" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">إغلاق</button>
+            <button id="btnSaveSubjectsModal" type="button" class="px-4 py-2 rounded-xl bg-teal-700 text-white text-xs font-bold">حفظ التعديلات</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-white border-t border-slate-200 py-3 px-4 text-center text-xs text-slate-500 no-print mt-8">
+    لوحة المعلم الذكية لحساب المعدلات — مطابقة للمنشور الوزاري رقم 522/و.ت.و/م.ع.ت/2026 (مستودع <code>imadtbn/teacher_dashboard</code>)
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

@@ -501,7 +501,7 @@
           if (exam !== null) examMarks[subject.id] = exam > 20 ? exam / 2 : exam;
           if (devoir !== null) devoirMarks[subject.id] = devoir;
         });
-        const student = { id: createStudentId('hr'), studentKey: linked?.studentKey || studentKey, name, grades, projectScore: 0, readingScore: 0, examMarks, devoirMarks, t2Avg: 0, t3Avg: 0, attendanceRegular: false };
+        const student = { id: createStudentId('hr'), studentKey: linked?.studentKey || studentKey, name, grades, projectScore: 0, readingScore: 0, examMarks, devoirMarks, qualitativeLevels: {}, t2Avg: 0, t3Avg: 0, attendanceRegular: false };
         if (hasHeader) {
           const project = importNumber(cells, headers, ['المشاريع الدراسية','المشروع','project'], 0, 20);
           const reading = importNumber(cells, headers, ['المطالعة','القراءة','reading'], 0, 20);
@@ -1280,7 +1280,8 @@
       const subInputsHtml = hr.subjects.map(sub => {
         const isQualT1 = (isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
         if (isQualT1 || isPriY1) {
-          return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">تقييم وصفي نوعي</span></td>`;
+          const level = isPriY1 ? (QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[sub.id])?.label || 'لم يقيّم بعد') : 'تقييم وصفي نوعي (الفصل الأول)';
+          return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">${escapeHtml(level)}</span></td>`;
         }
         const defaultVal = isPrimary ? 7 : 12;
         const val = clamp(st.grades && st.grades[sub.id] !== undefined ? st.grades[sub.id] : 0, 0, scaleMax);
@@ -1639,7 +1640,7 @@
         return `
           <tr class="border-b border-slate-200 bg-sky-50/40">
             <td class="p-2.5 font-bold text-slate-800">${escapeHtml(sub.name)}</td>
-            <td class="p-2.5 text-center font-bold text-sky-900" colspan="3">تقييم وصفي نوعي (تحكم مقبول في الكفاءات المستهدفة)</td>
+            <td class="p-2.5 text-center font-bold text-sky-900" colspan="3">${escapeHtml(c.isPriY1 ? (QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[sub.id])?.label || 'لم يقيّم بعد') : 'تقييم وصفي نوعي (الفصل الأول)')}</td>
             <td class="p-2.5 text-xs text-sky-900">وفق المنشور 522/2026</td>
           </tr>
         `;
@@ -1981,6 +1982,8 @@
         hrStudent.devoirMarks = hrStudent.devoirMarks || {};
         hrStudent.examMarks[targetSub.id] = Number(calc.examOn20.toFixed(2));
         hrStudent.devoirMarks[targetSub.id] = Number(calc.devoir.toFixed(2));
+        hrStudent.qualitativeLevels = hrStudent.qualitativeLevels || {};
+        if (stage === 'primary' && grp.yearLevel === 'p1') hrStudent.qualitativeLevels[targetSub.id] = st.qualLevel || '';
       });
       saveState();
       showToast(`تم ترحيل معدلات "${grp.subjectName}" إلى كشف الأستاذ الرئيسي لهذا الطور!`);

@@ -369,46 +369,139 @@
       : prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   }
 
-  function addStudentNames(names, target) {
+  function normalizeImportHeader(value) {
+    return String(value || '').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('ar').replace(/[\\s_\\-./()]+/g, '');
+  }
+
+  function parseCsvRows(text) {
+    const rows = [];
+    let row = [], cell = '', quoted = false;
+    const source = String(text || '').replace(/^\\uFEFF/, '');
+    for (let i = 0; i < source.length; i++) {
+      const ch = source[i];
+      if (ch === '"' && quoted && source[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = !quoted;
+      else if ((ch === ',' || ch === ';' || ch === '\\t') && !quoted) { row.push(cell.trim()); cell = ''; }
+      else if ((ch === '\\n' || ch === '\\r') && !quoted) {
+        if (ch === '\\r' && source[i + 1] === '\\n') i++;
+        row.push(cell.trim());
+        if (row.some(value => value !== '')) rows.push(row);
+        row = []; cell = '';
+      } else cell += ch;
+    }
+    row.push(cell.trim());
+    if (row.some(value => value !== '')) rows.push(row);
+    return rows;
+  }
+
+  function importHeaderIndex(headers, aliases) {
+    const normalized = headers.map(normalizeImportHeader);
+    return normalized.findIndex(value => aliases.some(alias => value === normalizeImportHeader(alias) || value.includes(normalizeImportHeader(alias))));
+  }
+
+  function importNumber(row, headers, aliases, min, max) {
+    const index = importHeaderIndex(headers, aliases);
+    if (index < 0 || row[index] === undefined || String(row[index]).trim() === '') return null;
+    const value = Number(String(row[index]).replace(',', '.'));
+    return Number.isFinite(value) ? clamp(value, min, max) : null;
+  }
+
+  function importRosterRows(inputRows, target) {
     const stage = getActiveStage();
     const group = getCurrentStageGroup(stage);
     const homeroom = getStageHomeroom(stage);
-    const cleanNames = [...new Set(names.map(name => String(name || '').trim().replace(/\\s+/g, ' ')).filter(Boolean))];
-    let added = 0;
-    let skipped = 0;
+    const rows = (inputRows || []).filter(row => Array.isArray(row) && row.some(cell => String(cell || '').trim()));
+    if (!rows.length) return { added: 0, skipped: 0, updated: 0 };
 
-    if (target === 'subject' || target === 'both') {
-      if (!group) {
-        showToast('أنشئ فوج المادة أولاً قبل إضافة التلاميذ', '⚠️');
-        return { added: 0, skipped: cleanNames.length };
+    const nameAliases = ['الاسم واللقب','اللقب والاسم','اسم التلميذ','اسم الطالب','التلميذ','الاسم الكامل','الاسم','nom et prenom','nom complet','student name','name'];
+    let headerIndex = rows.findIndex(row => row.some(cell => nameAliases.some(alias => normalizeImportHeader(cell).includes(normalizeImportHeader(alias)))));
+    const hasHeader = headerIndex >= 0;
+    const headers = hasHeader ? rows[headerIndex].map(String) : [];
+    const dataRows = hasHeader ? rows.slice(headerIndex + 1) : rows;
+    const surnameIndex = hasHeader ? importHeaderIndex(headers, ['اللقب','النسب','nom','surname','last name']) : -1;
+    const firstNameIndex = hasHeader ? importHeaderIndex(headers, ['الاسم','prénom','prenom','first name']) : -1;
+    const nameIndex = hasHeader ? importHeaderIndex(headers, nameAliases) : 0;
+
+    const existingSubject = new Set((group?.students || []).map(student => normalizeStudentName(student.name)));
+    const existingHomeroom = new Set(homeroom.students.map(student => normalizeStudentName(student.name)));
+    let added = 0, skipped = 0, updated = 0;
+
+    dataRows.forEach(row => {
+      const cells = row.map(value => String(value == null ? '' : value).trim());
+      let name = '';
+      if (hasHeader && surnameIndex >= 0 && firstNameIndex >= 0 && surnameIndex !== firstNameIndex) {
+        name = [cells[surnameIndex], cells[firstNameIndex]].filter(Boolean).join(' ');
+      } else if (hasHeader && nameIndex >= 0) {
+        name = cells[nameIndex] || '';
+      } else {
+        const textCells = cells.filter(value => value.length >= 2 && !/^[0-9.,/-]+$/.test(value));
+        name = textCells.length ? textCells.slice(0, 2).join(' ') : '';
       }
-      const existing = new Set(group.students.map(student => normalizeStudentName(student.name)));
-      cleanNames.forEach(name => {
-        const key = normalizeStudentName(name);
-        if (existing.has(key)) { skipped++; return; }
-        const studentKey = createStudentId('student');
-        group.students.push({ id: createStudentId('st'), studentKey, name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: 'A', customRemark: '', rubric: {} });
-        existing.add(key);
-        added++;
-      });
-    }
+      name = name.trim().replace(/\\s+/g, ' ');
+      if (!name) return;
 
-    if (target === 'homeroom' || target === 'both') {
-      const existing = new Set(homeroom.students.map(student => normalizeStudentName(student.name)));
-      cleanNames.forEach(name => {
-        const key = normalizeStudentName(name);
-        if (existing.has(key)) { skipped++; return; }
-        const grades = {};
-        homeroom.subjects.forEach(subject => { grades[subject.id] = 0; });
-        const linkedStudent = group && group.students.find(student => normalizeStudentName(student.name) === key);
-        homeroom.students.push({ id: createStudentId('hr'), studentKey: linkedStudent?.studentKey || createStudentId('student'), name, grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0 });
-        existing.add(key);
+      const key = normalizeStudentName(name);
+      const wantsSubject = target === 'subject' || target === 'both';
+      const wantsHomeroom = target === 'homeroom' || target === 'both';
+      if (wantsSubject && !group) { skipped++; return; }
+      if ((wantsSubject && existingSubject.has(key)) || (wantsHomeroom && existingHomeroom.has(key))) { skipped++; return; }
+
+      const studentKey = createStudentId('student');
+      if (wantsSubject) {
+        const student = { id: createStudentId('st'), studentKey, name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: 'A', customRemark: '', rubric: {} };
+        if (hasHeader) {
+          const max = stage === 'primary' ? 10 : 20;
+          const cont = importNumber(cells, headers, ['التقييم المستمر','تقييم النشاطات','النشاطات','المستمر','continuous','cont'], 0, max);
+          const devoir = importNumber(cells, headers, ['الفرض','علامة الفرض','devoir','assignment'], 0, 20);
+          const extra = importNumber(cells, headers, ['التعبير الشفوي','الأعمال التطبيقية','الشفوي','التطبيقي','oral','practical','extra'], 0, 20);
+          const exam = importNumber(cells, headers, ['الاختبار','علامة الاختبار','exam'], 0, stage === 'primary' ? 10 : 40);
+          if (cont !== null) student.cont = cont;
+          if (devoir !== null) student.devoir = devoir;
+          if (extra !== null) student.extra = extra;
+          if (exam !== null) student.exam = exam;
+        }
+        group.students.push(student);
+        existingSubject.add(key);
         added++;
-      });
-    }
-    return { added, skipped };
+      }
+      if (wantsHomeroom) {
+        const linked = wantsSubject ? group.students.find(student => student.studentKey === studentKey) : null;
+        const grades = {};
+        homeroom.subjects.forEach(subject => {
+          let grade = hasHeader ? importNumber(cells, headers, [subject.name, subject.id], 0, stage === 'primary' ? 10 : 20) : null;
+          grades[subject.id] = grade === null ? 0 : grade;
+        });
+        const student = { id: createStudentId('hr'), studentKey: linked?.studentKey || studentKey, name, grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0 };
+        if (hasHeader) {
+          const project = importNumber(cells, headers, ['المشاريع الدراسية','المشروع','project'], 0, 20);
+          const reading = importNumber(cells, headers, ['المطالعة','القراءة','reading'], 0, 20);
+          const t2 = importNumber(cells, headers, ['معدل الفصل الثاني','الفصل الثاني','t2avg'], 0, stage === 'primary' ? 10 : 20);
+          const t3 = importNumber(cells, headers, ['معدل الفصل الثالث','الفصل الثالث','t3avg'], 0, stage === 'primary' ? 10 : 20);
+          if (project !== null) student.projectScore = project;
+          if (reading !== null) student.readingScore = reading;
+          if (t2 !== null) student.t2Avg = t2;
+          if (t3 !== null) student.t3Avg = t3;
+        }
+        homeroom.students.push(student);
+        existingHomeroom.add(key);
+        if (!wantsSubject) added++;
+      }
+    });
+    return { added, skipped, updated };
   }
 
+  function googleSheetsCsvUrl(value) {
+    const url = new URL(String(value || '').trim());
+    if (!['docs.google.com', 'drive.google.com'].includes(url.hostname)) throw new Error('أدخل رابط Google Sheets صالحاً');
+    if (url.pathname.includes('/spreadsheets/d/e/') && url.pathname.includes('/pub')) {
+      url.searchParams.set('output', 'csv');
+      return url.toString();
+    }
+    const match = url.pathname.match(/\\/spreadsheets\\/d\\/([a-zA-Z0-9_-]+)/);
+    if (!match) throw new Error('الرابط لا يشير إلى جدول بيانات Google Sheets');
+    const gid = url.searchParams.get('gid') || (url.hash.match(/gid=(\\d+)/) || [])[1] || '0';
+    return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&gid=${gid}`;
+  }
 
   function isPrimaryQualitativeOnly(group) {
     if (group.stage !== 'primary') return false;
@@ -1527,26 +1620,14 @@
         const workbook = XLSX.read(new Uint8Array(event.target.result), { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-        const headerWords = ['الرقم', 'اللقب', 'الاسم', 'الإسم', 'تاريخ', 'ملاحظة', 'المعدل', 'وزارة', 'الجمهورية', 'القسم', 'الفوج'];
-        const names = rows.map(row => {
-          if (!Array.isArray(row) || !row.length) return '';
-          const cells = row.map(cell => String(cell == null ? '' : cell).trim()).filter(Boolean);
-          if (!cells.length || cells.some(cell => headerWords.some(word => cell === word))) return '';
-          const textCells = cells.filter(cell => cell.length >= 3 && !/^[0-9.,/-]+$/.test(cell));
-          return textCells.length ? textCells.slice(0, 2).join(' ').trim() : '';
-        }).filter(Boolean);
-        if (!names.length) {
-          showToast('لم يتم العثور على أسماء صالحة في ملف Excel', '⚠️');
-          return;
-        }
         const target = document.getElementById('importTargetSelect')?.value || 'subject';
-        const result = addStudentNames(names, target);
+        const result = importRosterRows(rows, target);
         saveState();
         renderStageWorkspace();
-        showToast(`تمت إضافة ${result.added} تلميذاً من Excel، وتجاوز ${result.skipped} اسماً مكرراً أو غير صالح`);
+        showToast(`استيراد Excel: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
       } catch (error) {
         console.error('Excel import failed:', error);
-        showToast('تعذر قراءة ملف Excel المرفوع', '⚠️');
+        showToast('تعذر قراءة ملف Excel أو مطابقة أعمدته', '⚠️');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -1937,15 +2018,37 @@
     document.getElementById('btnCancelImport')?.addEventListener('click', closeImport);
     document.getElementById('btnConfirmImport')?.addEventListener('click', () => {
       const raw = document.getElementById('importNamesTextarea').value;
-      const names = raw.split(/\\r?\\n/).map(value => value.trim()).filter(Boolean);
-      if (names.length === 0) return;
+      const rows = parseCsvRows(raw);
+      if (!rows.length) return;
       const target = document.getElementById('importTargetSelect').value;
-      const result = addStudentNames(names, target);
+      const result = importRosterRows(rows, target);
       document.getElementById('importNamesTextarea').value = '';
       saveState();
       closeImport();
       renderStageWorkspace();
-      showToast(`تمت إضافة ${result.added} تلميذاً، وتجاوز ${result.skipped} اسماً مكرراً أو غير قابل للإضافة`);
+      showToast(`استيراد مكتمل: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+    });
+
+    document.getElementById('btnImportGoogleSheet')?.addEventListener('click', async () => {
+      const input = document.getElementById('googleSheetUrl');
+      const button = document.getElementById('btnImportGoogleSheet');
+      try {
+        const csvUrl = googleSheetsCsvUrl(input?.value);
+        button.disabled = true;
+        button.textContent = 'جارٍ جلب الجدول...';
+        const response = await fetch(csvUrl, { mode: 'cors', credentials: 'omit' });
+        if (!response.ok) throw new Error('تعذر الوصول إلى الجدول. تحقق من نشره أو صلاحية العرض عبر الرابط');
+        const rows = parseCsvRows(await response.text());
+        const target = document.getElementById('importTargetSelect').value;
+        const result = importRosterRows(rows, target);
+        saveState();
+        renderStageWorkspace();
+        showToast(`استيراد Google Sheets: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+      } catch (error) {
+        showToast(error.message || 'تعذر استيراد Google Sheets؛ تحقق من صلاحية المشاركة', '⚠️');
+      } finally {
+        if (button) { button.disabled = false; button.textContent = 'استيراد من Google Sheets'; }
+      }
     });
 
     // New Group Modal

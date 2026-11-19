@@ -1899,7 +1899,7 @@
       grp.students.push({
         id: createStudentId('st'), studentKey: createStudentId('student'),
         name: '', cont: 0, devoir: 0, extra: 0, exam: 0,
-        qualLevel: 'A', customRemark: '', rubric: {}
+        qualLevel: '', customRemark: '', rubric: {}
       });
       saveState();
       renderStageWorkspace();

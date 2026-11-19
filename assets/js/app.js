@@ -494,14 +494,18 @@
           let grade = hasHeader ? importNumber(cells, headers, [subject.name, subject.id], 0, stage === 'primary' ? 10 : 20) : null;
           grades[subject.id] = grade === null ? 0 : grade;
         });
-        const examMarks = {}, devoirMarks = {};
+        const examMarks = {}, devoirMarks = {}, qualitativeLevels = {};
         homeroom.subjects.forEach(subject => {
+          const qualitativeIndex = hasHeader ? importHeaderIndex(headers, [subject.name, subject.id]) : -1;
+          const qualitativeRaw = qualitativeIndex >= 0 ? cells[qualitativeIndex] : '';
+          const qualitative = QUALITATIVE_LEVELS.find(level => level.value === qualitativeRaw || normalizeImportHeader(level.label) === normalizeImportHeader(qualitativeRaw));
+          if (qualitative) qualitativeLevels[subject.id] = qualitative.value;
           const exam = hasHeader ? importNumber(cells, headers, [subject.name + ' اختبار', 'اختبار ' + subject.name, subject.id + '_exam'], 0, 40) : null;
           const devoir = hasHeader ? importNumber(cells, headers, [subject.name + ' فرض', 'فرض ' + subject.name, subject.id + '_devoir'], 0, 20) : null;
           if (exam !== null) examMarks[subject.id] = exam > 20 ? exam / 2 : exam;
           if (devoir !== null) devoirMarks[subject.id] = devoir;
         });
-        const student = { id: createStudentId('hr'), studentKey: linked?.studentKey || studentKey, name, grades, projectScore: 0, readingScore: 0, examMarks, devoirMarks, qualitativeLevels: {}, t2Avg: 0, t3Avg: 0, attendanceRegular: false };
+        const student = { id: createStudentId('hr'), studentKey: linked?.studentKey || studentKey, name, grades, projectScore: 0, readingScore: 0, examMarks, devoirMarks, qualitativeLevels, t2Avg: 0, t3Avg: 0, attendanceRegular: false };
         if (hasHeader) {
           const project = importNumber(cells, headers, ['المشاريع الدراسية','المشروع','project'], 0, 20);
           const reading = importNumber(cells, headers, ['المطالعة','القراءة','reading'], 0, 20);

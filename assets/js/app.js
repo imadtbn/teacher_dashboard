@@ -1677,12 +1677,14 @@
     const c = computeHomeroomStudent(st, hr);
 
     const subjectRowsHtml = hr.subjects.map(sub => {
+      const qualitativeKey = sub.id + '_t' + Number(hr.activeTerm || 1);
+      const qualitativeLevel = QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[qualitativeKey]);
       const isQualT1 = (c.isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
-      if (isQualT1 || c.isPriY1) {
+      if (isQualT1 || c.isPriY1 || qualitativeLevel) {
         return `
           <tr class="border-b border-slate-200 bg-sky-50/40">
             <td class="p-2.5 font-bold text-slate-800">${escapeHtml(sub.name)}</td>
-            <td class="p-2.5 text-center font-bold text-sky-900" colspan="3">${escapeHtml(c.isPriY1 ? (QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[sub.id + '_t' + Number(hr.activeTerm || 1)])?.label || 'لم يقيّم بعد') : 'تقييم وصفي نوعي (الفصل الأول)')}</td>
+            <td class="p-2.5 text-center font-bold text-sky-900" colspan="3">${escapeHtml(qualitativeLevel?.label || (c.isPriY1 || isQualT1 ? 'لم يقيّم بعد' : 'تقييم وصفي نوعي'))}</td>
             <td class="p-2.5 text-xs text-sky-900">وفق المنشور 522/2026</td>
           </tr>
         `;

@@ -376,14 +376,24 @@
   function parseCsvRows(text) {
     const rows = [];
     let row = [], cell = '', quoted = false;
-    const source = String(text || '').replace(/^\uFEFF/, '');
+    const source = String(text || '').replace(/^\\uFEFF/, '');
+    const firstLine = source.split(/\\r?\\n/).find(line => line.trim()) || '';
+    const delimiterCounts = ['\\t', ';', ','].map(delimiter => {
+      let count = 0, inQuotes = false;
+      for (let i = 0; i < firstLine.length; i++) {
+        if (firstLine[i] === '"') inQuotes = !inQuotes;
+        else if (firstLine[i] === delimiter && !inQuotes) count++;
+      }
+      return count;
+    });
+    const delimiter = delimiterCounts[0] > 0 ? '\\t' : delimiterCounts[1] > 0 ? ';' : ',';
     for (let i = 0; i < source.length; i++) {
       const ch = source[i];
       if (ch === '"' && quoted && source[i + 1] === '"') { cell += '"'; i++; }
       else if (ch === '"') quoted = !quoted;
-      else if ((ch === ',' || ch === ';' || ch === '\t') && !quoted) { row.push(cell.trim()); cell = ''; }
-      else if ((ch === '\n' || ch === '\r') && !quoted) {
-        if (ch === '\r' && source[i + 1] === '\n') i++;
+      else if (ch === delimiter && !quoted) { row.push(cell.trim()); cell = ''; }
+      else if ((ch === '\\n' || ch === '\\r') && !quoted) {
+        if (ch === '\\r' && source[i + 1] === '\\n') i++;
         row.push(cell.trim());
         if (row.some(value => value !== '')) rows.push(row);
         row = []; cell = '';
@@ -454,7 +464,8 @@
           const cont = importNumber(cells, headers, ['التقييم المستمر','تقييم النشاطات','النشاطات','المستمر','continuous','cont'], 0, max);
           const devoir = importNumber(cells, headers, ['الفرض','علامة الفرض','devoir','assignment'], 0, 20);
           const extra = importNumber(cells, headers, ['التعبير الشفوي','الأعمال التطبيقية','الشفوي','التطبيقي','oral','practical','extra'], 0, 20);
-          const exam = importNumber(cells, headers, ['الاختبار','علامة الاختبار','exam'], 0, stage === 'primary' ? 10 : 40);
+          const examMax = stage === 'primary' ? 10 : Number(group.examScale) === 20 ? 20 : 40;
+          const exam = importNumber(cells, headers, ['الاختبار','علامة الاختبار','exam'], 0, examMax);
           if (cont !== null) student.cont = cont;
           if (devoir !== null) student.devoir = devoir;
           if (extra !== null) student.extra = extra;

@@ -1737,7 +1737,8 @@
 
   // Excel Upload & Export
   function handleExcelFileUpload(file) {
-    if (!file || typeof XLSX === 'undefined') return;
+    if (!file) return;
+    if (typeof XLSX === 'undefined') { showToast('تعذر تحميل مكتبة قراءة Excel. أعد تحميل الصفحة أو استخدم اللصق.', '⚠️'); return; }
     const reader = new FileReader();
     reader.onload = function (event) {
       try {

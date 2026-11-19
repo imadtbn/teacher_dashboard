@@ -533,7 +533,7 @@
           const qualitativeIndex = hasHeader ? importHeaderIndex(headers, [subject.name, subject.id]) : -1;
           const qualitativeRaw = qualitativeIndex >= 0 ? cells[qualitativeIndex] : '';
           const qualitative = QUALITATIVE_LEVELS.find(level => level.value === qualitativeRaw || normalizeImportHeader(level.label) === normalizeImportHeader(qualitativeRaw));
-          if (qualitative) qualitativeLevels[subject.id] = qualitative.value;
+          if (qualitative) qualitativeLevels[subject.id + '_t' + Number(homeroom.activeTerm || 1)] = qualitative.value;
           const isCurrentSubject = group && normalizeImportHeader(group.subjectName) === normalizeImportHeader(subject.name);
           const examAliases = [subject.name + ' اختبار', 'اختبار ' + subject.name, subject.id + '_exam', ...(isCurrentSubject ? ['الاختبار', 'علامة الاختبار', 'exam'] : [])];
           const devoirAliases = [subject.name + ' فرض', 'فرض ' + subject.name, subject.id + '_devoir', ...(isCurrentSubject ? ['الفرض', 'علامة الفرض', 'devoir'] : [])];
@@ -1321,7 +1321,8 @@
       const subInputsHtml = hr.subjects.map(sub => {
         const isQualT1 = (isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
         if (isQualT1 || isPriY1) {
-          const level = isPriY1 ? (QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[sub.id])?.label || 'لم يقيّم بعد') : 'تقييم وصفي نوعي (الفصل الأول)';
+          const qKey = sub.id + '_t' + Number(hr.activeTerm || 1);
+          const level = QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[qKey])?.label || 'لم يقيّم بعد';
           return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">${escapeHtml(level)}</span></td>`;
         }
         const defaultVal = isPrimary ? 7 : 12;
@@ -1681,7 +1682,7 @@
         return `
           <tr class="border-b border-slate-200 bg-sky-50/40">
             <td class="p-2.5 font-bold text-slate-800">${escapeHtml(sub.name)}</td>
-            <td class="p-2.5 text-center font-bold text-sky-900" colspan="3">${escapeHtml(c.isPriY1 ? (QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[sub.id])?.label || 'لم يقيّم بعد') : 'تقييم وصفي نوعي (الفصل الأول)')}</td>
+            <td class="p-2.5 text-center font-bold text-sky-900" colspan="3">${escapeHtml(c.isPriY1 ? (QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[sub.id + '_t' + Number(hr.activeTerm || 1)])?.label || 'لم يقيّم بعد') : 'تقييم وصفي نوعي (الفصل الأول)')}</td>
             <td class="p-2.5 text-xs text-sky-900">وفق المنشور 522/2026</td>
           </tr>
         `;
@@ -1818,13 +1819,17 @@
         const row = [idx + 1, st.name];
         if (isPriY1Export) {
           hr.subjects.forEach(subject => {
-            row.push(QUALITATIVE_LEVELS.find(level => level.value === st.qualitativeLevels?.[subject.id])?.label || 'لم يقيّم بعد');
+            row.push(QUALITATIVE_LEVELS.find(level => level.value === st.qualitativeLevels?.[subject.id + '_t' + Number(hr.activeTerm || 1)])?.label || 'لم يقيّم بعد');
           });
           row.push(st.attendanceRegular === true ? 'مواظب بانتظام' : 'غير مؤكد', c.autoPassEligible ? 'ينتقل آلياً' : 'لم يثبت شرط المواظبة');
           aoa.push(row);
           return;
         }
-        hr.subjects.forEach(subject => row.push(Number((parseFloat(st.grades[subject.id]) || 0).toFixed(2))));
+        hr.subjects.forEach(subject => {
+          const qualitativeKey = subject.id + '_t' + Number(hr.activeTerm || 1);
+          const qualitativeLevel = QUALITATIVE_LEVELS.find(level => level.value === st.qualitativeLevels?.[qualitativeKey]);
+          row.push(stage === 'primary' && qualitativeLevel ? qualitativeLevel.label : Number((parseFloat(st.grades[subject.id]) || 0).toFixed(2)));
+        });
         if (stage === 'secondary') row.push(Number(c.projectScore.toFixed(2)), Number(c.readingScore.toFixed(2)), Number(c.totalBonus.toFixed(2)));
         row.push(Number(c.finalWeightedSum.toFixed(2)), Number(c.termAvg.toFixed(2)), Number(c.t2.toFixed(2)), Number(c.t3.toFixed(2)), Number(c.annualAvg.toFixed(2)), c.award.label);
         aoa.push(row);
@@ -2049,7 +2054,7 @@
         hrStudent.examMarks[targetSub.id] = Number(calc.examOn20.toFixed(2));
         hrStudent.devoirMarks[targetSub.id] = Number(calc.devoir.toFixed(2));
         hrStudent.qualitativeLevels = hrStudent.qualitativeLevels || {};
-        if (stage === 'primary' && grp.yearLevel === 'p1') hrStudent.qualitativeLevels[targetSub.id] = st.qualLevel || '';
+        if (calc.qualOnly) hrStudent.qualitativeLevels[targetSub.id + '_t' + Number(grp.term || 1)] = st.qualLevel || '';
       });
       saveState();
       showToast(`تم ترحيل معدلات "${grp.subjectName}" إلى كشف الأستاذ الرئيسي لهذا الطور!`);

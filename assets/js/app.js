@@ -679,6 +679,12 @@
     const bonusProject = homeroom.stage === 'secondary' ? Math.max(0, projectScore - 10) : 0;
     const bonusReading = homeroom.stage === 'secondary' ? Math.max(0, readingScore - 10) : 0;
     const totalBonus = bonusProject + bonusReading;
+    const warnings = [];
+    if (homeroom.stage === 'secondary') {
+      const assessmentMarks = [...Object.values(student.devoirMarks || {}), ...Object.values(student.examMarks || {})].map(value => clamp(value, 0, 40)).filter(value => value > 0);
+      if (projectScore > 0 && assessmentMarks.some(value => Math.abs(value - projectScore) < 0.001)) warnings.push('علامة المشروع تطابق علامة فرض أو اختبار مسجلة لأحد المواد');
+      if (readingScore > 0 && assessmentMarks.some(value => Math.abs(value - readingScore) < 0.001)) warnings.push('علامة المطالعة تطابق علامة فرض أو اختبار مسجلة لأحد المواد');
+    }
 
     const finalWeightedSum = sumWeightedSubjects + totalBonus;
     const termAvg = sumCoeffs > 0 ? (finalWeightedSum / sumCoeffs) : 0;
@@ -696,7 +702,7 @@
     return {
       isPrimary, isPriY1, scaleMax, sumWeightedSubjects, sumCoeffs,
       projectScore, readingScore, bonusProject, bonusReading, totalBonus,
-      finalWeightedSum, termAvg, t2, t3, annualAvg, autoPassEligible, award
+      finalWeightedSum, termAvg, t2, t3, annualAvg, autoPassEligible, warnings, award
     };
   }
 
@@ -1921,7 +1927,7 @@
         if (!hrStudent) {
           hrStudent = {
             id: createStudentId('hr'), studentKey: st.studentKey || createStudentId('student'),
-            name: st.name, grades: {}, projectScore: 0, readingScore: 0,
+            name: st.name, grades: {}, projectScore: 0, readingScore: 0, examMarks: {}, devoirMarks: {},
             t2Avg: 0, t3Avg: 0, attendanceRegular: false
           };
           hr.students.push(hrStudent);
@@ -1929,6 +1935,10 @@
         if (!hrStudent.studentKey) hrStudent.studentKey = st.studentKey || createStudentId('student');
         if (!st.studentKey) st.studentKey = hrStudent.studentKey;
         hrStudent.grades[targetSub.id] = Number(calc.avg.toFixed(2));
+        hrStudent.examMarks = hrStudent.examMarks || {};
+        hrStudent.devoirMarks = hrStudent.devoirMarks || {};
+        hrStudent.examMarks[targetSub.id] = Number(calc.examOn20.toFixed(2));
+        hrStudent.devoirMarks[targetSub.id] = Number(calc.devoir.toFixed(2));
       });
       saveState();
       showToast(`تم ترحيل معدلات "${grp.subjectName}" إلى كشف الأستاذ الرئيسي لهذا الطور!`);

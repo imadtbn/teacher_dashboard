@@ -545,7 +545,7 @@
       const entries = state.assessmentSchedule.filter(item => item.stage === stage && (!group || item.groupId === group.id));
       list.innerHTML = entries.length ? entries.map(item => `
         <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs">
-          <div><strong>${escapeHtml(item.subjectName)}</strong><span class="mx-1 text-slate-500">— الفصل ${item.term}</span><span class="text-slate-600">فرض: ${item.testDate}</span><span class="block text-slate-500">التصحيح: ${item.correctionDate} | المعالجة: ${item.remediationDate} | الاختبارات: ${item.examStartDate}</span></div>
+          <div><strong>${escapeHtml(item.subjectName)}</strong><span class="mx-1 text-slate-500">— الفصل ${escapeHtml(item.term)}</span><span class="text-slate-600">فرض: ${escapeHtml(item.testDate)}</span><span class="block text-slate-500">التصحيح: ${escapeHtml(item.correctionDate)} | المعالجة: ${escapeHtml(item.remediationDate)} | الاختبارات: ${escapeHtml(item.examStartDate)}</span></div>
           <button type="button" data-delete-schedule="${escapeHtml(item.id)}" class="rounded bg-rose-50 px-2 py-1 font-bold text-rose-700">حذف</button>
         </div>`).join('') : '<p class="text-xs text-slate-500">لا توجد فروض مجدولة لهذا الفوج.</p>';
     }
@@ -886,7 +886,7 @@
     const termNames = { 1: 'الفصل الأول', 2: 'الفصل الثاني', 3: 'الفصل الثالث' };
     const tblTitle = document.getElementById('subjectTableTitle');
     if (tblTitle) {
-      tblTitle.textContent = `كشف نقاط مادة ${group.subjectName} — الفوج: ${group.groupName} (${termNames[group.term || 1]}) — المعامل: ${escapeHtml(group.coeff)}`;
+      tblTitle.textContent = `كشف نقاط مادة ${group.subjectName} — الفوج: ${group.groupName} (${termNames[group.term || 1]}) — المعامل: ${group.coeff}`;
     }
 
     const computedList = group.students.map(st => ({
@@ -1095,7 +1095,7 @@
             </button>
           </td>
           <td class="p-2.5 text-center">
-            <input type="number" min="0" max="20" step="0.25" value="${st.cont}" data-field="cont" data-id="${escapeHtml(st.id)}"
+            <input type="number" min="0" max="20" step="0.25" value="${clamp(st.cont, 0, 20)}" data-field="cont" data-id="${escapeHtml(st.id)}"
               class="sub-student-input num-input w-20 rounded-lg border ${contBorder} px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           <td class="p-2.5 text-center">
@@ -1112,7 +1112,7 @@
             </td>
           ` : ''}
           <td class="p-2.5 text-center">
-            <input type="number" min="0" max="${maxExamInput}" step="0.25" value="${st.exam}" data-field="exam" data-id="${escapeHtml(st.id)}"
+            <input type="number" min="0" max="${maxExamInput}" step="0.25" value="${clamp(st.exam, 0, 40)}" data-field="exam" data-id="${escapeHtml(st.id)}"
               class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           <td class="p-2.5 text-center font-bold text-amber-900 bg-amber-50/50 num-cell">${c.examOn40.toFixed(2)}</td>
@@ -1169,7 +1169,7 @@
     }
 
     document.getElementById('homeroomTableTitle').textContent =
-      `الجدول الجامع لمجلس القسم — ${escapeHtml(hr.className)} (السلم: /${scaleMax} | مجموع المعاملات: ${totalCoeffs})`;
+      `الجدول الجامع لمجلس القسم — ${hr.className} (السلم: /${scaleMax} | مجموع المعاملات: ${totalCoeffs})`;
 
     const computedList = hr.students.map(st => ({
       student: st,
@@ -1429,7 +1429,7 @@
     const subtitle = document.getElementById('rubricModalSubtitle');
 
     if (stage === 'primary') {
-      subtitle.textContent = `التلميذ(ة): ${escapeHtml(st.name)} — شبكة التقييم المستمر للطور الابتدائي (/10) وفق الصفحة 2 من المنشور 522/2026`;
+      subtitle.textContent = `التلميذ(ة): ${st.name} — شبكة التقييم المستمر للطور الابتدائي (/10) وفق الصفحة 2 من المنشور 522/2026`;
       container.innerHTML = `
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="bg-sky-50 p-3 rounded-xl border border-sky-200">
@@ -1725,7 +1725,7 @@
     const subTab = state.stageSubTab[stage] || 'subject';
     const aoa = [];
     aoa.push(['الجمهورية الجزائرية الديمقراطية الشعبية - وزارة التربية الوطنية']);
-    aoa.push([`المؤسسة: ${escapeHtml(state.schoolName || '')}`, `الأستاذ(ة): ${escapeHtml(state.teacherName || '')}`, `السنة الدراسية: ${escapeHtml(state.schoolYear || '2026/2027')}`]);
+    aoa.push([`المؤسسة: ${state.schoolName || ''}`, `الأستاذ(ة): ${state.teacherName || ''}`, `السنة الدراسية: ${state.schoolYear || '2026/2027'}`]);
     aoa.push([]);
 
     if (subTab === 'homeroom') {

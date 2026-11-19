@@ -1762,13 +1762,14 @@
         hr.subjects.push(targetSub);
       }
       grp.students.forEach(st => {
+        if (!String(st.name || '').trim()) return;
         const calc = computeStudentSubjectGrade(st, grp);
         let hrStudent = hr.students.find(h => (st.studentKey && h.studentKey === st.studentKey) || h.name.trim() === st.name.trim());
         if (!hrStudent) {
           hrStudent = {
             id: createStudentId('hr'), studentKey: st.studentKey || createStudentId('student'),
-            name: st.name, grades: {}, projectScore: 14, readingScore: 14,
-            t2Avg: Number(calc.avg.toFixed(2)), t3Avg: Number(calc.avg.toFixed(2))
+            name: st.name, grades: {}, projectScore: 0, readingScore: 0,
+            t2Avg: 0, t3Avg: 0
           };
           hr.students.push(hrStudent);
         }

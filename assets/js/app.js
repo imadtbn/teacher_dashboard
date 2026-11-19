@@ -257,6 +257,8 @@
       stageSubTab: { primary: 'subject', middle: 'subject', secondary: 'subject' },
       activeGroupByStage: { primary: '', middle: '', secondary: '' },
       groups: [],
+      assessmentSchedule: [],
+      closedWeeks: [],
       homeroomByStage: {
         primary: makeHomeroom('primary', 'pri_y3'),
         middle: makeHomeroom('middle', 'mid_y4'),
@@ -280,6 +282,8 @@
     });
     if (parsed.teacherName === 'الأستاذ(ة): بن سالم عبد القادر') parsed.teacherName = '';
     if (parsed.schoolName === 'مؤسسة التربية والتعليم - سيدي داود (بومرداس)') parsed.schoolName = '';
+    parsed.assessmentSchedule = Array.isArray(parsed.assessmentSchedule) ? parsed.assessmentSchedule : [];
+    parsed.closedWeeks = Array.isArray(parsed.closedWeeks) ? parsed.closedWeeks : [];
     parsed.activeGroupByStage = parsed.activeGroupByStage || { primary: '', middle: '', secondary: '' };
     Object.keys(parsed.activeGroupByStage).forEach(stage => {
       if (!parsed.groups.some(group => group.stage === stage && group.id === parsed.activeGroupByStage[stage])) parsed.activeGroupByStage[stage] = '';
@@ -290,6 +294,8 @@
   let state = loadState();
   let searchSubjectQuery = '';
   let activeRubricStudentId = null;
+  let pendingImportRows = null;
+  let pendingImportSource = '';
   let chartInstances = { brackets: null, awards: null, components: null };
 
   function loadState() {
@@ -297,7 +303,38 @@
       const currentRaw = localStorage.getItem(STORAGE_KEY);
       if (currentRaw) {
         const current = JSON.parse(currentRaw);
-        if (current && Array.isArray(current.groups) && current.homeroomByStage) return current;
+        if (current && Array.isArray(current.groups) && current.homeroomByStage) {
+          current.assessmentSchedule = Array.isArray(current.assessmentSchedule) ? current.assessmentSchedule : [];
+          current.closedWeeks = Array.isArray(current.closedWeeks) ? current.closedWeeks : [];
+          current.activeGroupByStage = current.activeGroupByStage || { primary: '', middle: '', secondary: '' };
+          current.stageSubTab = current.stageSubTab || { primary: 'subject', middle: 'subject', secondary: 'subject' };
+          current.groups.forEach(group => {
+            group.students = Array.isArray(group.students) ? group.students : [];
+            group.students.forEach(student => {
+              if (!student.studentKey) student.studentKey = createStudentId('student');
+              student.rubric = student.rubric || {};
+              if (student.qualLevel === undefined) student.qualLevel = '';
+            });
+          });
+          Object.values(current.homeroomByStage).forEach(homeroom => {
+            if (!homeroom) return;
+            homeroom.students = Array.isArray(homeroom.students) ? homeroom.students : [];
+            homeroom.subjects = Array.isArray(homeroom.subjects) ? homeroom.subjects : [];
+            homeroom.students.forEach(student => {
+              student.grades = student.grades || {};
+              student.examMarks = student.examMarks || {};
+              student.devoirMarks = student.devoirMarks || {};
+              student.qualitativeLevels = student.qualitativeLevels || {};
+              if (student.attendanceRegular !== true) student.attendanceRegular = false;
+              if (!student.studentKey) {
+                const match = current.groups.find(group => group.stage === homeroom.stage && group.students.some(item => normalizeStudentName(item.name) === normalizeStudentName(student.name)));
+                const linked = match?.students.find(item => normalizeStudentName(item.name) === normalizeStudentName(student.name));
+                student.studentKey = linked?.studentKey || createStudentId('student');
+              }
+            });
+          });
+          return current;
+        }
       }
       const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
       if (legacyRaw) {
@@ -316,7 +353,10 @@
   function saveState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {}
+    } catch (e) {
+      console.error('تعذر حفظ بيانات لوحة الأستاذ:', e);
+      if (document.getElementById('toastContainer')) showToast('تعذر حفظ البيانات محلياً. تحقق من مساحة التخزين في المتصفح.', '⚠️');
+    }
     syncProfileUI();
   }
 
@@ -361,6 +401,12 @@
   }
   function normalizeStudentName(value) {
     return String(value || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar');
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[character]));
   }
 
   function createStudentId(prefix) {
@@ -458,7 +504,7 @@
 
       const studentKey = createStudentId('student');
       if (wantsSubject) {
-        const student = { id: createStudentId('st'), studentKey, name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: 'A', customRemark: '', rubric: {} };
+        const student = { id: createStudentId('st'), studentKey, name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: '', customRemark: '', rubric: {} };
         if (hasHeader) {
           const max = stage === 'primary' ? 10 : 20;
           const cont = importNumber(cells, headers, ['التقييم المستمر','تقييم النشاطات','النشاطات','المستمر','continuous','cont'], 0, max);
@@ -482,7 +528,24 @@
           let grade = hasHeader ? importNumber(cells, headers, [subject.name, subject.id], 0, stage === 'primary' ? 10 : 20) : null;
           grades[subject.id] = grade === null ? 0 : grade;
         });
-        const student = { id: createStudentId('hr'), studentKey: linked?.studentKey || studentKey, name, grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0 };
+        const examMarks = {}, devoirMarks = {}, qualitativeLevels = {};
+        homeroom.subjects.forEach(subject => {
+          const qualitativeIndex = hasHeader ? importHeaderIndex(headers, [subject.name, subject.id]) : -1;
+          const qualitativeRaw = qualitativeIndex >= 0 ? cells[qualitativeIndex] : '';
+          const qualitative = QUALITATIVE_LEVELS.find(level => level.value === qualitativeRaw || normalizeImportHeader(level.label) === normalizeImportHeader(qualitativeRaw));
+          if (qualitative) {
+            const qualitativeTerm = group && normalizeImportHeader(group.subjectName) === normalizeImportHeader(subject.name) ? group.term : homeroom.activeTerm;
+            qualitativeLevels[subject.id + '_t' + Number(qualitativeTerm || 1)] = qualitative.value;
+          }
+          const isCurrentSubject = group && normalizeImportHeader(group.subjectName) === normalizeImportHeader(subject.name);
+          const examAliases = [subject.name + ' اختبار', 'اختبار ' + subject.name, subject.id + '_exam', ...(isCurrentSubject ? ['الاختبار', 'علامة الاختبار', 'exam'] : [])];
+          const devoirAliases = [subject.name + ' فرض', 'فرض ' + subject.name, subject.id + '_devoir', ...(isCurrentSubject ? ['الفرض', 'علامة الفرض', 'devoir'] : [])];
+          const exam = hasHeader ? importNumber(cells, headers, examAliases, 0, 40) : null;
+          const devoir = hasHeader ? importNumber(cells, headers, devoirAliases, 0, 20) : null;
+          if (exam !== null) examMarks[subject.id] = exam > 20 ? exam / 2 : exam;
+          if (devoir !== null) devoirMarks[subject.id] = devoir;
+        });
+        const student = { id: createStudentId('hr'), studentKey: linked?.studentKey || studentKey, name, grades, projectScore: 0, readingScore: 0, examMarks, devoirMarks, qualitativeLevels, t2Avg: 0, t3Avg: 0, attendanceRegular: false };
         if (hasHeader) {
           const project = importNumber(cells, headers, ['المشاريع الدراسية','المشروع','project'], 0, 20);
           const reading = importNumber(cells, headers, ['المطالعة','القراءة','reading'], 0, 20);
@@ -501,10 +564,44 @@
     return { added, skipped, updated };
   }
 
+  function clearImportPreview() {
+    pendingImportRows = null;
+    pendingImportSource = '';
+    const preview = document.getElementById('importPreview');
+    if (preview) { preview.innerHTML = ''; preview.classList.add('hidden'); }
+    const button = document.getElementById('btnConfirmImport');
+    if (button) button.textContent = 'معاينة البيانات';
+  }
+
+  function showImportPreview(rows, source) {
+    pendingImportRows = rows;
+    pendingImportSource = source;
+    const preview = document.getElementById('importPreview');
+    if (preview) {
+      const sample = rows.slice(0, 6);
+      preview.innerHTML = `
+        <div class="mb-2 text-xs font-extrabold text-emerald-900">معاينة ${escapeHtml(source)} — ${rows.length} صفوف، قبل الاعتماد</div>
+        <div class="max-h-44 overflow-auto rounded-lg border border-slate-200 bg-white">
+          <table class="min-w-full text-[11px]"><tbody>
+            ${sample.map((row, index) => `<tr class="${index === 0 ? 'bg-slate-100 font-bold' : 'border-t border-slate-100'}">${row.slice(0, 8).map(cell => `<td class="whitespace-nowrap px-2 py-1">${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}
+          </tbody></table>
+        </div>
+        <p class="mt-1 text-[10px] text-slate-500">تأكد من ترتيب الأعمدة والوجهة قبل اعتماد الإضافة. لن تُنشأ علامات افتراضية للخانات غير الموجودة.</p>
+      `;
+      preview.classList.remove('hidden');
+    }
+    const button = document.getElementById('btnConfirmImport');
+    if (button) button.textContent = 'اعتماد البيانات المعروضة';
+    const modal = document.getElementById('modalImportNames');
+    modal?.classList.remove('hidden');
+    modal?.classList.add('flex');
+  }
+
   function googleSheetsCsvUrl(value) {
     const url = new URL(String(value || '').trim());
     if (!['docs.google.com', 'drive.google.com'].includes(url.hostname)) throw new Error('أدخل رابط Google Sheets صالحاً');
-    if (url.pathname.includes('/spreadsheets/d/e/') && url.pathname.includes('/pub')) {
+    if (url.pathname.includes('/spreadsheets/d/e/') && (url.pathname.includes('/pub') || url.pathname.includes('/pubhtml'))) {
+      url.pathname = url.pathname.replace('/pubhtml', '/pub');
       url.searchParams.set('output', 'csv');
       return url.toString();
     }
@@ -512,6 +609,52 @@
     if (!match) throw new Error('الرابط لا يشير إلى جدول بيانات Google Sheets');
     const gid = url.searchParams.get('gid') || (url.hash.match(/gid=(\d+)/) || [])[1] || '0';
     return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&gid=${gid}`;
+  }
+
+  function renderScheduleManager() {
+    const stage = getActiveStage();
+    const group = getCurrentStageGroup(stage);
+    const list = document.getElementById('scheduleEntriesList');
+    const closedList = document.getElementById('closedWeeksList');
+    const subjectInput = document.getElementById('scheduleSubject');
+    const termInput = document.getElementById('scheduleTerm');
+    if (subjectInput && group) subjectInput.value = group.subjectName || '';
+    if (termInput && group) termInput.value = String(group.term || 1);
+
+    if (list) {
+      const entries = state.assessmentSchedule.filter(item => item.stage === stage && (!group || normalizeStudentName(item.groupName) === normalizeStudentName(group.groupName)));
+      list.innerHTML = entries.length ? entries.map(item => `
+        <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs">
+          <div><strong>${escapeHtml(item.subjectName)}</strong><span class="mx-1 text-slate-500">— الفصل ${escapeHtml(item.term)}</span><span class="text-slate-600">فرض: ${escapeHtml(item.testDate)}</span><span class="block text-slate-500">التصحيح: ${escapeHtml(item.correctionDate)} | المعالجة: ${escapeHtml(item.remediationDate)} | الاختبارات: ${escapeHtml(item.examStartDate)}</span></div>
+          <button type="button" data-delete-schedule="${escapeHtml(item.id)}" class="rounded bg-rose-50 px-2 py-1 font-bold text-rose-700">حذف</button>
+        </div>`).join('') : '<p class="text-xs text-slate-500">لا توجد فروض مجدولة لهذا الفوج.</p>';
+    }
+    if (closedList) {
+      const ranges = state.closedWeeks.filter(item => item.stage === stage && (!group || normalizeStudentName(item.groupName) === normalizeStudentName(group.groupName)));
+      closedList.innerHTML = ranges.length ? ranges.map(item => `
+        <div class="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
+          <span>أسبوع مغلق: ${escapeHtml(item.startDate)} إلى ${escapeHtml(item.endDate)}</span>
+          <button type="button" data-delete-closed-week="${escapeHtml(item.id)}" class="font-bold text-rose-700">حذف</button>
+        </div>`).join('') : '<p class="text-xs text-slate-500">لم تُحدد فترة أسبوع مغلق لهذا الفوج.</p>';
+    }
+  }
+
+  function validateScheduledTest(candidate) {
+    const sameClass = item => item.stage === candidate.stage && normalizeStudentName(item.groupName) === normalizeStudentName(candidate.groupName);
+    if (state.assessmentSchedule.some(item => sameClass(item) && Number(item.term) === Number(candidate.term) && normalizeStudentName(item.subjectName) === normalizeStudentName(candidate.subjectName))) {
+      return 'يوجد فرض مسجل مسبقاً للمادة نفسها في هذا الفصل.';
+    }
+    const sameDayCount = state.assessmentSchedule.filter(item => sameClass(item) && item.testDate === candidate.testDate).length;
+    if (sameDayCount >= 2) return 'لا يمكن برمجة أكثر من فرضين في اليوم نفسه للقسم.';
+    const inClosedWeek = state.closedWeeks.some(item => sameClass(item) && candidate.testDate >= item.startDate && candidate.testDate <= item.endDate);
+    if (inClosedWeek) return 'التاريخ المختار يقع ضمن الأسبوع المغلق.';
+    if (candidate.testDate >= candidate.examStartDate) return 'يجب أن يسبق الفرض تاريخ انطلاق الاختبارات الفصلية.';
+    const deadline = new Date(candidate.examStartDate + 'T00:00:00');
+    deadline.setDate(deadline.getDate() - 7);
+    const latestAllowed = [deadline.getFullYear(), String(deadline.getMonth() + 1).padStart(2, '0'), String(deadline.getDate()).padStart(2, '0')].join('-');
+    if (candidate.correctionDate > latestAllowed || candidate.remediationDate > latestAllowed) return 'يجب إنهاء التصحيح والمعالجة قبل الاختبارات بسبعة أيام على الأقل.';
+    if (candidate.correctionDate < candidate.testDate || candidate.remediationDate < candidate.correctionDate) return 'تحقق من ترتيب تواريخ الفرض والتصحيح والمعالجة.';
+    return '';
   }
 
   function isPrimaryQualitativeOnly(group) {
@@ -544,7 +687,7 @@
     }
 
     let mtm = 0, avg = 0;
-    const qualInfo = QUALITATIVE_LEVELS.find(q => q.value === (student.qualLevel || 'A')) || QUALITATIVE_LEVELS[0];
+    const qualInfo = QUALITATIVE_LEVELS.find(q => q.value === student.qualLevel) || { value: '', label: 'لم يقيّم بعد', numEquiv: 0 };
 
     if (qualOnly) {
       avg = qualInfo.numEquiv;
@@ -623,6 +766,12 @@
     const bonusProject = homeroom.stage === 'secondary' ? Math.max(0, projectScore - 10) : 0;
     const bonusReading = homeroom.stage === 'secondary' ? Math.max(0, readingScore - 10) : 0;
     const totalBonus = bonusProject + bonusReading;
+    const warnings = [];
+    if (homeroom.stage === 'secondary') {
+      const assessmentMarks = [...Object.values(student.devoirMarks || {}), ...Object.values(student.examMarks || {})].map(value => clamp(value, 0, 40)).filter(value => value > 0);
+      if (projectScore > 0 && assessmentMarks.some(value => Math.abs(value - projectScore) < 0.001)) warnings.push('علامة المشروع تطابق علامة فرض أو اختبار مسجلة لأحد المواد');
+      if (readingScore > 0 && assessmentMarks.some(value => Math.abs(value - readingScore) < 0.001)) warnings.push('علامة المطالعة تطابق علامة فرض أو اختبار مسجلة لأحد المواد');
+    }
 
     const finalWeightedSum = sumWeightedSubjects + totalBonus;
     const termAvg = sumCoeffs > 0 ? (finalWeightedSum / sumCoeffs) : 0;
@@ -640,7 +789,7 @@
     return {
       isPrimary, isPriY1, scaleMax, sumWeightedSubjects, sumCoeffs,
       projectScore, readingScore, bonusProject, bonusReading, totalBonus,
-      finalWeightedSum, termAvg, t2, t3, annualAvg, autoPassEligible, award
+      finalWeightedSum, termAvg, t2, t3, annualAvg, autoPassEligible, warnings, award
     };
   }
 
@@ -745,7 +894,7 @@
     const groupSelect = document.getElementById('selectSubjectGroup');
     if (groupSelect) {
       groupSelect.innerHTML = stageGroups.map(g =>
-        `<option value="${g.id}" ${g.id === group.id ? 'selected' : ''}>${g.groupName} — ${g.subjectName}</option>`
+        `<option value="${escapeHtml(g.id)}" ${g.id === group.id ? 'selected' : ''}>${escapeHtml(g.groupName)} — ${escapeHtml(g.subjectName)}</option>`
       ).join('');
     }
 
@@ -753,7 +902,7 @@
     if (levelSelect) {
       if (!meta.levels.some(l => l.value === group.yearLevel)) group.yearLevel = meta.levels[0].value;
       levelSelect.innerHTML = meta.levels.map(l =>
-        `<option value="${l.value}" ${l.value === group.yearLevel ? 'selected' : ''}>${l.label}</option>`
+        `<option value="${escapeHtml(l.value)}" ${l.value === group.yearLevel ? 'selected' : ''}>${escapeHtml(l.label)}</option>`
       ).join('');
     }
 
@@ -761,7 +910,7 @@
     if (catSelect) {
       if (!meta.categories.some(c => c.value === group.category)) group.category = meta.categories[0].value;
       catSelect.innerHTML = meta.categories.map(c =>
-        `<option value="${c.value}" ${c.value === group.category ? 'selected' : ''}>${c.label}</option>`
+        `<option value="${escapeHtml(c.value)}" ${c.value === group.category ? 'selected' : ''}>${escapeHtml(c.label)}</option>`
       ).join('');
     }
 
@@ -837,7 +986,7 @@
     if (box && listEl) {
       if (allWarnings.length > 0) {
         box.classList.remove('hidden');
-        listEl.innerHTML = allWarnings.slice(0, 5).map(w => `<li>${w} — انقر على «🧮 المعايير» لتوليد علامة موضوعية مستقلة.</li>`).join('');
+        listEl.innerHTML = allWarnings.slice(0, 5).map(w => `<li>${escapeHtml(w)} — انقر على «🧮 المعايير» لتوليد علامة موضوعية مستقلة.</li>`).join('');
       } else {
         box.classList.add('hidden');
       }
@@ -948,20 +1097,21 @@
           <tr class="hover:bg-slate-50 transition">
             <td class="p-2.5 text-center font-bold text-slate-400 num-cell">${idx + 1}</td>
             <td class="p-2.5">
-              <input type="text" value="${st.name}" data-field="name" data-id="${st.id}"
+              <input type="text" value="${escapeHtml(st.name)}" data-field="name" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full bg-transparent font-bold text-slate-800 px-1.5 py-1 rounded" />
             </td>
             <td class="p-2.5 text-center bg-sky-50/40">
-              <select data-field="qualLevel" data-id="${st.id}" class="sub-student-input rounded-xl border border-sky-300 bg-white px-3 py-1.5 text-xs font-bold text-sky-950">
-                ${QUALITATIVE_LEVELS.map(q => `<option value="${q.value}" ${(st.qualLevel || 'A') === q.value ? 'selected' : ''}>${q.label}</option>`).join('')}
+              <select data-field="qualLevel" data-id="${escapeHtml(st.id)}" class="sub-student-input rounded-xl border border-sky-300 bg-white px-3 py-1.5 text-xs font-bold text-sky-950">
+                <option value="" disabled ${!st.qualLevel ? 'selected' : ''}>اختر مستوى التحكم</option>
+                ${QUALITATIVE_LEVELS.map(q => `<option value="${q.value}" ${st.qualLevel === q.value ? 'selected' : ''}>${q.label}</option>`).join('')}
               </select>
             </td>
             <td class="p-2.5">
-              <input type="text" value="${c.remark}" data-field="customRemark" data-id="${st.id}"
+              <input type="text" value="${escapeHtml(c.remark)}" data-field="customRemark" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5" />
             </td>
             <td class="p-2.5 text-center no-print">
-              <button type="button" data-del-sub="${st.id}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
+              <button type="button" data-del-sub="${escapeHtml(st.id)}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
             </td>
           </tr>
         `;
@@ -973,32 +1123,32 @@
           <tr class="hover:bg-slate-50 transition">
             <td class="p-2.5 text-center font-bold text-slate-400 num-cell">${idx + 1}</td>
             <td class="p-2.5">
-              <input type="text" value="${st.name}" data-field="name" data-id="${st.id}"
+              <input type="text" value="${escapeHtml(st.name)}" data-field="name" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full bg-transparent font-bold text-slate-800 px-1.5 py-1 rounded" />
             </td>
             <td class="p-2.5 text-center no-print">
-              <button type="button" data-rubric-id="${st.id}" class="btn-open-rubric px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200 text-xs font-bold">
+              <button type="button" data-rubric-id="${escapeHtml(st.id)}" class="btn-open-rubric px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200 text-xs font-bold">
                 🧮 الميادين
               </button>
             </td>
             <td class="p-2.5 text-center">
-              <input type="number" min="0" max="10" step="0.25" value="${st.cont}" data-field="cont" data-id="${st.id}"
+              <input type="number" min="0" max="10" step="0.25" value="${clamp(st.cont, 0, stage === 'primary' ? 10 : 20)}" data-field="cont" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold" />
             </td>
             ${!isActivityNoExam ? `
               <td class="p-2.5 text-center">
-                <input type="number" min="0" max="10" step="0.25" value="${st.exam}" data-field="exam" data-id="${st.id}"
+                <input type="number" min="0" max="10" step="0.25" value="${clamp(st.exam, 0, stage === 'primary' ? 10 : 40)}" data-field="exam" data-id="${escapeHtml(st.id)}"
                   class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold" />
               </td>
             ` : ''}
             <td class="p-2.5 text-center text-sm ${avgColor} num-cell">${c.avg.toFixed(2)}</td>
-            <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${isPriY1 ? '—' : rankMap[st.id]}</td>
+            <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
             <td class="p-2.5">
-              <input type="text" value="${c.remark}" data-field="customRemark" data-id="${st.id}"
+              <input type="text" value="${escapeHtml(c.remark)}" data-field="customRemark" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1" />
             </td>
             <td class="p-2.5 text-center no-print">
-              <button type="button" data-del-sub="${st.id}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
+              <button type="button" data-del-sub="${escapeHtml(st.id)}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
             </td>
           </tr>
         `;
@@ -1010,26 +1160,26 @@
       const contBorder = hasWarn ? 'border-amber-500 bg-amber-50' : 'border-slate-300';
 
       return `
-        <tr class="hover:bg-slate-50/90 transition" data-student-id="${st.id}">
+        <tr class="hover:bg-slate-50/90 transition" data-student-id="${escapeHtml(st.id)}">
           <td class="p-2.5 text-center font-bold text-slate-400 num-cell">${idx + 1}</td>
           <td class="p-2.5">
             <div class="flex items-center gap-1">
-              ${hasWarn ? `<span title="${c.warnings.join(' | ')}" class="text-amber-500 cursor-help">⚠️</span>` : ''}
-              <input type="text" value="${st.name}" data-field="name" data-id="${st.id}"
+              ${hasWarn ? `<span title="${escapeHtml(c.warnings.join(' | '))}" class="text-amber-500 cursor-help">⚠️</span>` : ''}
+              <input type="text" value="${escapeHtml(st.name)}" data-field="name" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full bg-transparent font-bold text-slate-800 px-1.5 py-1 rounded" />
             </div>
           </td>
           <td class="p-2.5 text-center no-print">
-            <button type="button" data-rubric-id="${st.id}" class="btn-open-rubric px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold shadow-sm">
+            <button type="button" data-rubric-id="${escapeHtml(st.id)}" class="btn-open-rubric px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold shadow-sm">
               🧮 المعايير
             </button>
           </td>
           <td class="p-2.5 text-center">
-            <input type="number" min="0" max="20" step="0.25" value="${st.cont}" data-field="cont" data-id="${st.id}"
+            <input type="number" min="0" max="20" step="0.25" value="${clamp(st.cont, 0, 20)}" data-field="cont" data-id="${escapeHtml(st.id)}"
               class="sub-student-input num-input w-20 rounded-lg border ${contBorder} px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           <td class="p-2.5 text-center">
-            <input type="number" min="0" max="20" step="0.25" value="${st.devoir}" data-field="devoir" data-id="${st.id}"
+            <input type="number" min="0" max="20" step="0.25" value="${clamp(st.devoir, 0, 20)}" data-field="devoir" data-id="${escapeHtml(st.id)}"
               class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           ${stage === 'middle' ? `
@@ -1037,12 +1187,12 @@
           ` : ''}
           ${hasExtra ? `
             <td class="p-2.5 text-center bg-teal-50/30">
-              <input type="number" min="0" max="20" step="0.25" value="${st.extra}" data-field="extra" data-id="${st.id}"
+              <input type="number" min="0" max="20" step="0.25" value="${clamp(st.extra, 0, 20)}" data-field="extra" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input num-input w-20 rounded-lg border border-teal-300 px-2 py-1 text-xs sm:text-sm font-bold" />
             </td>
           ` : ''}
           <td class="p-2.5 text-center">
-            <input type="number" min="0" max="${maxExamInput}" step="0.25" value="${st.exam}" data-field="exam" data-id="${st.id}"
+            <input type="number" min="0" max="${maxExamInput}" step="0.25" value="${clamp(st.exam, 0, 40)}" data-field="exam" data-id="${escapeHtml(st.id)}"
               class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           <td class="p-2.5 text-center font-bold text-amber-900 bg-amber-50/50 num-cell">${c.examOn40.toFixed(2)}</td>
@@ -1050,11 +1200,11 @@
           <td class="p-2.5 text-center font-bold text-purple-900 bg-purple-50/40 num-cell">${c.weighted.toFixed(2)}</td>
           <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
           <td class="p-2.5">
-            <input type="text" value="${c.remark}" data-field="customRemark" data-id="${st.id}"
+            <input type="text" value="${escapeHtml(c.remark)}" data-field="customRemark" data-id="${escapeHtml(st.id)}"
               class="sub-student-input w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1" />
           </td>
           <td class="p-2.5 text-center no-print">
-            <button type="button" data-del-sub="${st.id}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
+            <button type="button" data-del-sub="${escapeHtml(st.id)}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
           </td>
         </tr>
       `;
@@ -1068,7 +1218,7 @@
     if (presetSel) {
       if (!meta.presets.some(p => p.value === hr.preset)) hr.preset = meta.presets[0].value;
       presetSel.innerHTML = meta.presets.map(p =>
-        `<option value="${p.value}" ${p.value === hr.preset ? 'selected' : ''}>${p.label}</option>`
+        `<option value="${escapeHtml(p.value)}" ${p.value === hr.preset ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
       ).join('');
     }
 
@@ -1120,10 +1270,16 @@
 
     document.getElementById('kpiHomeCount').textContent = String(count);
     document.getElementById('kpiHomeTermAvg').textContent = isPriY1 ? 'وصفي' : avgTerm.toFixed(2);
-    document.getElementById('kpiHomeScaleLabel').textContent = isPriY1 ? 'انتقال آلي' : `من ${scaleMax}`;
-    document.getElementById('kpiHomeAnnualAvg').textContent = isPriY1 ? 'آلي' : avgAnnual.toFixed(2);
+    const termLabel = document.getElementById('kpiHomeTermLabel');
+    if (termLabel) termLabel.textContent = isPriY1 ? 'التقييم الوصفي للقسم' : 'المعدل الفصلي للقسم';
+    document.getElementById('kpiHomeScaleLabel').textContent = isPriY1 ? 'لا يُحتسب معدل عددي' : `من ${scaleMax}`;
+    const annualLabel = document.getElementById('kpiHomeAnnualLabel');
+    const annualHint = document.getElementById('kpiHomeAnnualHint');
+    if (annualLabel) annualLabel.textContent = isPriY1 ? 'المؤهلون للانتقال الآلي' : 'المعدل السنوي للقسم';
+    if (annualHint) annualHint.textContent = isPriY1 ? 'يشترط إثبات المواظبة المنتظمة' : '(ف1 + ف2 + ف3) ÷ 3';
+    document.getElementById('kpiHomeAnnualAvg').textContent = isPriY1 ? `${passCount} / ${count}` : avgAnnual.toFixed(2);
     document.getElementById('kpiHomePassRate').textContent = `${passRate}%`;
-    document.getElementById('kpiHomePassCount').textContent = `${passCount} ناجح من ${count}`;
+    document.getElementById('kpiHomePassCount').textContent = isPriY1 ? `${passCount} مستوفٍ للمواظبة من ${count}` : `${passCount} ناجح من ${count}`;
     document.getElementById('kpiHomeBonusAvg').textContent = stage === 'secondary' ? `+${avgBonus.toFixed(2)}` : 'غير معني';
     document.getElementById('kpiHomeHonorCount').textContent = String(honorCount);
 
@@ -1131,8 +1287,8 @@
     const subjectColsHtml = hr.subjects.map(sub => {
       const isQualT1 = (isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
       return `<th class="p-2 text-center min-w-[78px] border-l border-slate-200 ${isQualT1 ? 'bg-sky-50 text-sky-900' : ''}">
-        <div class="truncate max-w-[95px]" title="${sub.name}">${sub.name}</div>
-        <div class="text-[10px] ${isQualT1 ? 'text-sky-700' : 'text-teal-700'} font-bold">${isQualT1 ? 'وصفي (ف1)' : `معامل ${sub.coeff}`}</div>
+        <div class="truncate max-w-[95px]" title="${escapeHtml(sub.name)}">${escapeHtml(sub.name)}</div>
+        <div class="text-[10px] ${isQualT1 ? 'text-sky-700' : 'text-teal-700'} font-bold">${isQualT1 ? 'وصفي (ف1)' : `معامل ${escapeHtml(sub.coeff)}`}</div>
       </th>`;
     }).join('');
 
@@ -1174,14 +1330,16 @@
       const subInputsHtml = hr.subjects.map(sub => {
         const isQualT1 = (isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
         if (isQualT1 || isPriY1) {
-          return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">تقييم وصفي نوعي</span></td>`;
+          const qKey = sub.id + '_t' + Number(hr.activeTerm || 1);
+          const level = QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[qKey])?.label || 'لم يقيّم بعد';
+          return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">${escapeHtml(level)}</span></td>`;
         }
         const defaultVal = isPrimary ? 7 : 12;
-        const val = st.grades[sub.id] !== undefined ? st.grades[sub.id] : defaultVal;
+        const val = clamp(st.grades && st.grades[sub.id] !== undefined ? st.grades[sub.id] : 0, 0, scaleMax);
         return `
           <td class="p-1.5 text-center border-l border-slate-100">
             <input type="number" min="0" max="${scaleMax}" step="0.25" value="${val}"
-              data-hr-student="${st.id}" data-hr-sub="${sub.id}"
+              data-hr-student="${escapeHtml(st.id)}" data-hr-sub="${escapeHtml(sub.id)}"
               class="hr-grade-input num-input w-16 rounded-lg border border-slate-200 px-1.5 py-1 text-xs font-bold" />
           </td>
         `;
@@ -1189,14 +1347,16 @@
 
       const secCellsHtml = stage === 'secondary' ? `
         <td class="p-1.5 text-center bg-amber-50/40 border-l border-amber-100">
-          <input type="number" min="0" max="20" step="0.25" value="${st.projectScore}"
-            data-hr-student="${st.id}" data-hr-field="projectScore"
+          <input type="number" min="0" max="20" step="0.25" value="${clamp(st.projectScore, 0, 20)}"
+            data-hr-student="${escapeHtml(st.id)}" data-hr-field="projectScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
+          <span class="block mt-1 max-w-[110px] text-[9px] leading-3 text-rose-700">${escapeHtml(c.warnings.join("، "))}</span>
         </td>
         <td class="p-1.5 text-center bg-amber-50/40 border-l border-amber-100">
-          <input type="number" min="0" max="20" step="0.25" value="${st.readingScore}"
-            data-hr-student="${st.id}" data-hr-field="readingScore"
+          <input type="number" min="0" max="20" step="0.25" value="${clamp(st.readingScore, 0, 20)}"
+            data-hr-student="${escapeHtml(st.id)}" data-hr-field="readingScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
+          <span class="block mt-1 max-w-[110px] text-[9px] leading-3 text-rose-700">${escapeHtml(c.warnings.join("، "))}</span>
         </td>
         <td class="p-2 text-center font-extrabold text-amber-800 bg-amber-100/50 border-l border-amber-200 num-cell">+${c.totalBonus.toFixed(2)}</td>
       ` : '';
@@ -1208,35 +1368,35 @@
         <tr class="hover:bg-slate-50 transition">
           <td class="p-2 text-center font-bold text-slate-400 num-cell">${idx + 1}</td>
           <td class="p-2 border-l border-slate-100">
-            <input type="text" value="${st.name}" data-hr-student="${st.id}" data-hr-field="name"
+            <input type="text" value="${escapeHtml(st.name)}" data-hr-student="${escapeHtml(st.id)}" data-hr-field="name"
               class="hr-meta-input w-full bg-transparent font-bold text-slate-800 px-1 py-0.5 rounded" />
-            ${isPriY1 ? `<label class="mt-1 flex items-center gap-1 text-[10px] font-semibold text-sky-800"><input type="checkbox" class="hr-attendance-input" data-hr-student="${st.id}" ${st.attendanceRegular === true ? 'checked' : ''} /> مواظب بانتظام (شرط الانتقال)</label>` : ''}
+            ${isPriY1 ? `<label class="mt-1 flex items-center gap-1 text-[10px] font-semibold text-sky-800"><input type="checkbox" class="hr-attendance-input" data-hr-student="${escapeHtml(st.id)}" ${st.attendanceRegular === true ? 'checked' : ''} /> مواظب بانتظام (شرط الانتقال)</label>` : ''}
           </td>
           ${subInputsHtml}
           ${secCellsHtml}
           <td class="p-2 text-center font-bold text-purple-900 bg-purple-50/40 num-cell">${isPriY1 ? '-' : c.finalWeightedSum.toFixed(2)}</td>
           <td class="p-2 text-center text-sm ${termAvgCls} num-cell">${isPriY1 ? 'وصفي' : c.termAvg.toFixed(2)}</td>
           <td class="p-1.5 text-center bg-slate-50/60">
-            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t2Avg}"
-              data-hr-student="${st.id}" data-hr-field="t2Avg"
+            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${clamp(st.t2Avg, 0, scaleMax)}"
+              data-hr-student="${escapeHtml(st.id)}" data-hr-field="t2Avg"
               class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
           <td class="p-1.5 text-center bg-slate-50/60">
-            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t3Avg}"
-              data-hr-student="${st.id}" data-hr-field="t3Avg"
+            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${clamp(st.t3Avg, 0, scaleMax)}"
+              data-hr-student="${escapeHtml(st.id)}" data-hr-field="t3Avg"
               class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
           <td class="p-2 text-center text-sm ${annualAvgCls} num-cell">${isPriY1 ? (c.autoPassEligible ? 'ينتقل آلياً' : 'غير مؤهل بعد') : c.annualAvg.toFixed(2)}</td>
-          <td class="p-2 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
+          <td class="p-2 text-center font-bold text-slate-700 num-cell">${isPriY1 ? '—' : rankMap[st.id]}</td>
           <td class="p-2 text-center">
             <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${c.award.cls}">${c.award.label}</span>
           </td>
           <td class="p-2 text-center no-print">
             <div class="flex items-center justify-center gap-1">
-              <button type="button" data-report-id="${st.id}" class="btn-open-report px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-bold shadow-sm">
+              <button type="button" data-report-id="${escapeHtml(st.id)}" class="btn-open-report px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-bold shadow-sm">
                 📄 كشف
               </button>
-              <button type="button" data-del-hr="${st.id}" class="btn-del-hr-student px-1.5 py-1 rounded-lg text-rose-500 hover:bg-rose-50 text-xs font-bold">
+              <button type="button" data-del-hr="${escapeHtml(st.id)}" class="btn-del-hr-student px-1.5 py-1 rounded-lg text-rose-500 hover:bg-rose-50 text-xs font-bold">
                 ✕
               </button>
             </div>
@@ -1249,11 +1409,31 @@
   function renderAnalyticsForStage(stage) {
     if (typeof Chart === 'undefined') return;
     const source = document.getElementById('analyticsSourceSelect')?.value || 'subject';
+    const chartGrid = document.getElementById('analyticsChartsGrid');
+    const qualitativeNotice = document.getElementById('qualitativeAnalyticsNotice');
+    const activeGroup = source === 'subject' ? getCurrentStageGroup(stage) : null;
+    const activeHomeroom = source === 'homeroom' ? getStageHomeroom(stage) : null;
+    const qualitativeOnly = stage === 'primary' && (
+      (source === 'subject' && activeGroup && isPrimaryQualitativeOnly(activeGroup)) ||
+      (source === 'homeroom' && activeHomeroom?.preset === 'pri_y1')
+    );
+    if (chartInstances.brackets) chartInstances.brackets.destroy();
+    if (chartInstances.awards) chartInstances.awards.destroy();
+    if (chartInstances.components) chartInstances.components.destroy();
+    chartInstances = {};
+    if (qualitativeOnly) {
+      chartGrid?.classList.add('hidden');
+      qualitativeNotice?.classList.remove('hidden');
+      return;
+    }
+    chartGrid?.classList.remove('hidden');
+    qualitativeNotice?.classList.add('hidden');
     const mult = stage === 'primary' ? 2 : 1;
     let averagesNorm20 = [], thirdLabels = [], thirdValues = [];
 
     if (source === 'subject') {
-      const group = getCurrentStageGroup(stage);
+      const group = activeGroup;
+      if (!group) { chartGrid?.classList.add('hidden'); qualitativeNotice?.classList.remove('hidden'); if (qualitativeNotice) qualitativeNotice.textContent = 'لا توجد بيانات مادة لعرض إحصائياتها في هذا الفوج.'; return; }
       const computed = group.students.map(st => computeStudentSubjectGrade(st, group));
       averagesNorm20 = computed.map(c => c.avg * mult);
       const n = computed.length || 1;
@@ -1526,12 +1706,14 @@
     const c = computeHomeroomStudent(st, hr);
 
     const subjectRowsHtml = hr.subjects.map(sub => {
+      const qualitativeKey = sub.id + '_t' + Number(hr.activeTerm || 1);
+      const qualitativeLevel = QUALITATIVE_LEVELS.find(item => item.value === st.qualitativeLevels?.[qualitativeKey]);
       const isQualT1 = (c.isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
-      if (isQualT1 || c.isPriY1) {
+      if (isQualT1 || c.isPriY1 || qualitativeLevel) {
         return `
           <tr class="border-b border-slate-200 bg-sky-50/40">
-            <td class="p-2.5 font-bold text-slate-800">${sub.name}</td>
-            <td class="p-2.5 text-center font-bold text-sky-900" colspan="3">تقييم وصفي نوعي (تحكم مقبول في الكفاءات المستهدفة)</td>
+            <td class="p-2.5 font-bold text-slate-800">${escapeHtml(sub.name)}</td>
+            <td class="p-2.5 text-center font-bold text-sky-900" colspan="3">${escapeHtml(qualitativeLevel?.label || (c.isPriY1 || isQualT1 ? 'لم يقيّم بعد' : 'تقييم وصفي نوعي'))}</td>
             <td class="p-2.5 text-xs text-sky-900">وفق المنشور 522/2026</td>
           </tr>
         `;
@@ -1541,7 +1723,7 @@
       const prod = grade * coeff;
       return `
         <tr class="border-b border-slate-200">
-          <td class="p-2.5 font-bold text-slate-800">${sub.name}</td>
+          <td class="p-2.5 font-bold text-slate-800">${escapeHtml(sub.name)}</td>
           <td class="p-2.5 text-center font-bold num-cell">${grade.toFixed(2)} / ${c.scaleMax}</td>
           <td class="p-2.5 text-center num-cell">${coeff}</td>
           <td class="p-2.5 text-center font-bold text-purple-900 num-cell">${prod.toFixed(2)}</td>
@@ -1571,19 +1753,17 @@
       <div class="border-2 border-slate-800 rounded-xl p-4 space-y-4">
         <div class="text-center border-b border-slate-300 pb-3">
           <div class="text-xs font-bold text-slate-600">الجمهورية الجزائرية الديمقراطية الشعبية — وزارة التربية الوطنية</div>
-          <div class="text-xs font-bold text-slate-700 mt-0.5">${state.schoolName || ''} — السنة الدراسية: ${state.schoolYear || '2026/2027'}</div>
-          <h4 class="text-base sm:text-lg font-extrabold text-slate-900 mt-1">كشف نقاط التلميذ(ة): ${st.name}</h4>
+          <div class="text-xs font-bold text-slate-700 mt-0.5">${escapeHtml(state.schoolName || '')} — السنة الدراسية: ${escapeHtml(state.schoolYear || '2026/2027')}</div>
+          <h4 class="text-base sm:text-lg font-extrabold text-slate-900 mt-1">كشف نقاط التلميذ(ة): ${escapeHtml(st.name)}</h4>
           <div class="text-xs font-semibold text-slate-600 mt-1">
-            القسم: <strong>${hr.className}</strong> | الأستاذ(ة): <strong>${state.teacherName || ''}</strong>
+            القسم: <strong>${escapeHtml(hr.className)}</strong> | الأستاذ(ة): <strong>${escapeHtml(state.teacherName || '')}</strong>
           </div>
         </div>
         <table class="w-full text-right border-collapse border border-slate-300 text-xs sm:text-sm">
           <thead>
             <tr class="bg-slate-800 text-white">
               <th class="p-2.5">المادة التعليمية</th>
-              <th class="p-2.5 text-center">المعدل الفصلي</th>
-              <th class="p-2.5 text-center">المعامل</th>
-              <th class="p-2.5 text-center">الجداء</th>
+              <th class="p-2.5 text-center" colspan="3">${c.isPriY1 ? 'التقييم الوصفي' : 'المعدل الفصلي / المعامل / الجداء'}</th>
               <th class="p-2.5">الملاحظة البيداغوجية</th>
             </tr>
           </thead>
@@ -1593,11 +1773,9 @@
           </tbody>
           <tfoot>
             <tr class="bg-slate-100 font-extrabold border-t-2 border-slate-400">
-              <td class="p-2.5">المجموع العام</td>
-              <td class="p-2.5 text-center">-</td>
-              <td class="p-2.5 text-center num-cell">${c.sumCoeffs}</td>
-              <td class="p-2.5 text-center text-purple-950 num-cell">${c.finalWeightedSum.toFixed(2)}</td>
-              <td class="p-2.5 text-xs">${stage === 'secondary' ? `شامل لفائض المشاريع والمطالعة (+${c.totalBonus.toFixed(2)})` : 'مجموع جداءات المواد'}</td>
+              ${c.isPriY1
+                ? `<td class="p-2.5 font-bold text-sky-900" colspan="4">تقييم وصفي نوعي — المواظبة: ${c.autoPassEligible ? 'منتظمة' : 'غير مؤكدة'}</td><td class="p-2.5 text-xs">${c.autoPassEligible ? 'مؤهل للانتقال الآلي' : 'لم يثبت شرط المواظبة'}</td>`
+                : `<td class="p-2.5">المجموع العام</td><td class="p-2.5 text-center">-</td><td class="p-2.5 text-center num-cell">${c.sumCoeffs}</td><td class="p-2.5 text-center text-purple-950 num-cell">${c.finalWeightedSum.toFixed(2)}</td><td class="p-2.5 text-xs">${stage === 'secondary' ? `شامل لفائض المشاريع والمطالعة (+${c.totalBonus.toFixed(2)})` : 'مجموع جداءات المواد'}</td>`}
             </tr>
           </tfoot>
         </table>
@@ -1608,11 +1786,11 @@
           </div>
           <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-center">
             <div class="text-xs font-bold text-indigo-800">المعدل السنوي</div>
-            <div class="text-xl font-extrabold text-indigo-950 mt-0.5 num-cell">${c.isPriY1 ? 'ينتقل آلياً' : `${c.annualAvg.toFixed(2)} / ${c.scaleMax}`}</div>
+            <div class="text-xl font-extrabold text-indigo-950 mt-0.5 num-cell">${c.isPriY1 ? (c.autoPassEligible ? 'ينتقل آلياً' : 'غير مؤهل بعد') : `${c.annualAvg.toFixed(2)} / ${c.scaleMax}`}</div>
           </div>
           <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
             <div class="text-xs font-bold text-slate-600">الرتبة في القسم</div>
-            <div class="text-xl font-extrabold text-slate-900 mt-0.5 num-cell">${rank} / ${hr.students.length}</div>
+            <div class="text-xl font-extrabold text-slate-900 mt-0.5 num-cell">${c.isPriY1 ? '—' : `${rank} / ${hr.students.length}`}</div>
           </div>
           <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
             <div class="text-xs font-bold text-amber-800">قرار مجلس القسم</div>
@@ -1628,18 +1806,16 @@
 
   // Excel Upload & Export
   function handleExcelFileUpload(file) {
-    if (!file || typeof XLSX === 'undefined') return;
+    if (!file) return;
+    if (typeof XLSX === 'undefined') { showToast('تعذر تحميل مكتبة قراءة Excel. أعد تحميل الصفحة أو استخدم اللصق.', '⚠️'); return; }
     const reader = new FileReader();
     reader.onload = function (event) {
       try {
         const workbook = XLSX.read(new Uint8Array(event.target.result), { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-        const target = document.getElementById('importTargetSelect')?.value || 'subject';
-        const result = importRosterRows(rows, target);
-        saveState();
-        renderStageWorkspace();
-        showToast(`استيراد Excel: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+        if (!rows.length) { showToast('ملف Excel لا يحتوي على صفوف.', '⚠️'); return; }
+        showImportPreview(rows, 'Excel');
       } catch (error) {
         console.error('Excel import failed:', error);
         showToast('تعذر قراءة ملف Excel أو مطابقة أعمدته', '⚠️');
@@ -1659,15 +1835,32 @@
     if (subTab === 'homeroom') {
       const hr = getStageHomeroom(stage);
       aoa.push([`كشف المعدلات الشامل للقسم: ${hr.className} (الفصل ${hr.activeTerm})`]);
-      const headers = ['الرقم', 'اللقب والاسم', ...hr.subjects.map(s => `${s.name} (معامل ${s.coeff})`)];
-      if (stage === 'secondary') headers.push('المشاريع الدراسية (/20)', 'المطالعة (/20)', 'فائض النقاط (+)');
-      headers.push('مجموع الجداءات', 'المعدل الفصلي', 'معدل الفصل 2', 'معدل الفصل 3', 'المعدل السنوي', 'قرار مجلس القسم');
+      const isPriY1Export = stage === 'primary' && hr.preset === 'pri_y1';
+      const headers = isPriY1Export
+        ? ['الرقم', 'اللقب والاسم', ...hr.subjects.map(subject => subject.name + ' (تقييم وصفي)'), 'المواظبة المنتظمة', 'قرار الانتقال']
+        : ['الرقم', 'اللقب والاسم', ...hr.subjects.map(subject => `${subject.name} (معامل ${subject.coeff})`)];
+      if (!isPriY1Export) {
+        if (stage === 'secondary') headers.push('المشاريع الدراسية (/20)', 'المطالعة (/20)', 'فائض النقاط (+)');
+        headers.push('مجموع الجداءات', 'المعدل الفصلي', 'معدل الفصل 2', 'معدل الفصل 3', 'المعدل السنوي', 'قرار مجلس القسم');
+      }
       aoa.push(headers);
 
       hr.students.forEach((st, idx) => {
         const c = computeHomeroomStudent(st, hr);
         const row = [idx + 1, st.name];
-        hr.subjects.forEach(s => row.push(Number((parseFloat(st.grades[s.id]) || 0).toFixed(2))));
+        if (isPriY1Export) {
+          hr.subjects.forEach(subject => {
+            row.push(QUALITATIVE_LEVELS.find(level => level.value === st.qualitativeLevels?.[subject.id + '_t' + Number(hr.activeTerm || 1)])?.label || 'لم يقيّم بعد');
+          });
+          row.push(st.attendanceRegular === true ? 'مواظب بانتظام' : 'غير مؤكد', c.autoPassEligible ? 'ينتقل آلياً' : 'لم يثبت شرط المواظبة');
+          aoa.push(row);
+          return;
+        }
+        hr.subjects.forEach(subject => {
+          const qualitativeKey = subject.id + '_t' + Number(hr.activeTerm || 1);
+          const qualitativeLevel = QUALITATIVE_LEVELS.find(level => level.value === st.qualitativeLevels?.[qualitativeKey]);
+          row.push(stage === 'primary' && qualitativeLevel ? qualitativeLevel.label : Number((parseFloat(st.grades[subject.id]) || 0).toFixed(2)));
+        });
         if (stage === 'secondary') row.push(Number(c.projectScore.toFixed(2)), Number(c.readingScore.toFixed(2)), Number(c.totalBonus.toFixed(2)));
         row.push(Number(c.finalWeightedSum.toFixed(2)), Number(c.termAvg.toFixed(2)), Number(c.t2.toFixed(2)), Number(c.t3.toFixed(2)), Number(c.annualAvg.toFixed(2)), c.award.label);
         aoa.push(row);
@@ -1676,20 +1869,35 @@
       const grp = getCurrentStageGroup(stage);
       aoa.push([`كشف نقاط مادة: ${grp.subjectName} — الفوج: ${grp.groupName} — المعامل: ${grp.coeff}`]);
       const hasExtra = (stage === 'secondary' && (grp.category === 'languages' || grp.category === 'practical'));
-      const headers = ['الرقم', 'اللقب والاسم', 'التقييم المستمر / النشاطات'];
-      if (stage !== 'primary') headers.push('علامة الفرض');
-      if (stage === 'middle') headers.push('معدل التقييم المستمر (م.ت.م)');
-      if (hasExtra) headers.push(grp.category === 'languages' ? 'التعبير الشفوي' : 'الأعمال التطبيقية');
-      headers.push(stage === 'primary' ? 'الاختبار (/10)' : 'علامة الاختبار (/40)', 'المعدل الفصلي للمادة', `الجداء (×${grp.coeff})`, 'الملاحظة وتبرير دفتر التقويم');
+      const qualitativeOnly = stage === 'primary' && isPrimaryQualitativeOnly(grp);
+      const activityOnly = stage === 'primary' && grp.category === 'pri_activity';
+      const headers = qualitativeOnly
+        ? ['الرقم', 'اللقب والاسم', 'مستوى التحكم', 'الملاحظة الوصفية']
+        : activityOnly
+          ? ['الرقم', 'اللقب والاسم', 'التقييم المستمر', 'المعدل الفصلي للمادة', 'الملاحظة']
+          : ['الرقم', 'اللقب والاسم', 'التقييم المستمر / النشاطات'];
+      if (!qualitativeOnly && !activityOnly) {
+        if (stage !== 'primary') headers.push('علامة الفرض');
+        if (stage === 'middle') headers.push('معدل التقييم المستمر (م.ت.م)');
+        if (hasExtra) headers.push(grp.category === 'languages' ? 'التعبير الشفوي' : 'الأعمال التطبيقية');
+        headers.push(stage === 'primary' ? 'الاختبار (/10)' : 'علامة الاختبار (/40)', 'المعدل الفصلي للمادة', `الجداء (×${grp.coeff})`, 'الملاحظة وتبرير دفتر التقويم');
+      }
       aoa.push(headers);
 
       grp.students.forEach((st, idx) => {
         const c = computeStudentSubjectGrade(st, grp);
+        if (qualitativeOnly) {
+          aoa.push([idx + 1, st.name, c.qualInfo.label, c.remark]);
+          return;
+        }
         const row = [idx + 1, st.name, Number(c.cont.toFixed(2))];
         if (stage !== 'primary') row.push(Number(c.devoir.toFixed(2)));
         if (stage === 'middle') row.push(Number(c.mtm.toFixed(2)));
         if (hasExtra) row.push(Number(c.extra.toFixed(2)));
-        row.push(Number((stage === 'primary' ? c.examOn10 : c.examOn40).toFixed(2)), Number(c.avg.toFixed(2)), Number(c.weighted.toFixed(2)), c.remark);
+        if (!activityOnly) row.push(Number((stage === 'primary' ? c.examOn10 : c.examOn40).toFixed(2)));
+        row.push(Number(c.avg.toFixed(2)));
+        if (!activityOnly) row.push(Number(c.weighted.toFixed(2)));
+        row.push(c.remark);
         aoa.push(row);
       });
     }
@@ -1842,7 +2050,7 @@
       grp.students.push({
         id: createStudentId('st'), studentKey: createStudentId('student'),
         name: '', cont: 0, devoir: 0, extra: 0, exam: 0,
-        qualLevel: 'A', customRemark: '', rubric: {}
+        qualLevel: '', customRemark: '', rubric: {}
       });
       saveState();
       renderStageWorkspace();
@@ -1864,7 +2072,7 @@
         if (!hrStudent) {
           hrStudent = {
             id: createStudentId('hr'), studentKey: st.studentKey || createStudentId('student'),
-            name: st.name, grades: {}, projectScore: 0, readingScore: 0,
+            name: st.name, grades: {}, projectScore: 0, readingScore: 0, examMarks: {}, devoirMarks: {},
             t2Avg: 0, t3Avg: 0, attendanceRegular: false
           };
           hr.students.push(hrStudent);
@@ -1872,6 +2080,12 @@
         if (!hrStudent.studentKey) hrStudent.studentKey = st.studentKey || createStudentId('student');
         if (!st.studentKey) st.studentKey = hrStudent.studentKey;
         hrStudent.grades[targetSub.id] = Number(calc.avg.toFixed(2));
+        hrStudent.examMarks = hrStudent.examMarks || {};
+        hrStudent.devoirMarks = hrStudent.devoirMarks || {};
+        hrStudent.examMarks[targetSub.id] = Number(calc.examOn20.toFixed(2));
+        hrStudent.devoirMarks[targetSub.id] = Number(calc.devoir.toFixed(2));
+        hrStudent.qualitativeLevels = hrStudent.qualitativeLevels || {};
+        if (calc.qualOnly) hrStudent.qualitativeLevels[targetSub.id + '_t' + Number(grp.term || 1)] = st.qualLevel || '';
       });
       saveState();
       showToast(`تم ترحيل معدلات "${grp.subjectName}" إلى كشف الأستاذ الرئيسي لهذا الطور!`);
@@ -1897,7 +2111,12 @@
       const student = grp.students.find(s => s.id === target.getAttribute('data-id'));
       if (!student) return;
       const field = target.getAttribute('data-field');
-      if (field === 'name' || field === 'customRemark' || field === 'qualLevel') {
+      if (field === 'name') {
+        const normalized = normalizeStudentName(target.value);
+        const duplicate = normalized && grp.students.some(other => other.id !== student.id && normalizeStudentName(other.name) === normalized);
+        if (duplicate) { showToast('هذا الاسم موجود مسبقاً في كشف المادة.', '⚠️'); renderStageWorkspace(); return; }
+        student.name = target.value.trim().replace(/\\s+/g, ' ');
+      } else if (field === 'customRemark' || field === 'qualLevel') {
         student[field] = target.value;
       } else {
         const maxVal = stage === 'primary' ? 10 : ((field === 'exam' && Number(grp.examScale) === 40) ? 40 : 20);
@@ -1962,8 +2181,10 @@
       const grades = {};
       hr.subjects.forEach(subject => { grades[subject.id] = 0; });
       hr.students.push({
-        id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'hrs_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        name: '', grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0, attendanceRegular: false
+        id: createStudentId('hr'), studentKey: createStudentId('student'),
+        name: '', grades, projectScore: 0, readingScore: 0,
+        examMarks: {}, devoirMarks: {}, qualitativeLevels: {},
+        t2Avg: 0, t3Avg: 0, attendanceRegular: false
       });
       saveState();
       renderStageWorkspace();
@@ -1995,7 +2216,14 @@
         const st = hr.students.find(s => s.id === t.getAttribute('data-hr-student'));
         const field = t.getAttribute('data-hr-field');
         if (st) {
-          st[field] = field === 'name' ? t.value : clamp(t.value, 0, 20);
+          if (field === 'name') {
+            const normalized = normalizeStudentName(t.value);
+            const duplicate = normalized && hr.students.some(other => other.id !== st.id && normalizeStudentName(other.name) === normalized);
+            if (duplicate) { showToast('هذا الاسم موجود مسبقاً في كشف القسم.', '⚠️'); renderStageWorkspace(); return; }
+            st.name = t.value.trim().replace(/\\s+/g, ' ');
+          } else {
+            st[field] = clamp(t.value, 0, 20);
+          }
           saveState();
           renderStageWorkspace();
         }
@@ -2027,7 +2255,7 @@
 
     // Paste Modal
     const modalImport = document.getElementById('modalImportNames');
-    const closeImport = () => { modalImport?.classList.add('hidden'); modalImport?.classList.remove('flex'); };
+    const closeImport = () => { clearImportPreview(); modalImport?.classList.add('hidden'); modalImport?.classList.remove('flex'); };
     document.getElementById('btnOpenPasteModal')?.addEventListener('click', () => {
       modalImport?.classList.remove('hidden');
       modalImport?.classList.add('flex');
@@ -2035,16 +2263,26 @@
     document.getElementById('btnCloseImportModal')?.addEventListener('click', closeImport);
     document.getElementById('btnCancelImport')?.addEventListener('click', closeImport);
     document.getElementById('btnConfirmImport')?.addEventListener('click', () => {
-      const raw = document.getElementById('importNamesTextarea').value;
-      const rows = parseCsvRows(raw);
-      if (!rows.length) return;
+      if (!pendingImportRows) {
+        const rows = parseCsvRows(document.getElementById('importNamesTextarea').value);
+        if (!rows.length) return;
+        showImportPreview(rows, 'الجدول الملصوق');
+        return;
+      }
       const target = document.getElementById('importTargetSelect').value;
-      const result = importRosterRows(rows, target);
+      if ((target === 'subject' || target === 'both') && !getCurrentStageGroup(getActiveStage())) {
+        showToast('أنشئ فوج المادة أولاً، أو اختر «قسم الأستاذ الرئيسي فقط» كوجهة للاستيراد.', '⚠️');
+        return;
+      }
+      const result = importRosterRows(pendingImportRows, target);
       document.getElementById('importNamesTextarea').value = '';
       saveState();
       closeImport();
       renderStageWorkspace();
       showToast(`استيراد مكتمل: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+    });
+    document.getElementById('importNamesTextarea')?.addEventListener('input', () => {
+      if (pendingImportRows) clearImportPreview();
     });
 
     document.getElementById('btnImportGoogleSheet')?.addEventListener('click', async () => {
@@ -2057,16 +2295,74 @@
         const response = await fetch(csvUrl, { mode: 'cors', credentials: 'omit' });
         if (!response.ok) throw new Error('تعذر الوصول إلى الجدول. تحقق من نشره أو صلاحية العرض عبر الرابط');
         const rows = parseCsvRows(await response.text());
-        const target = document.getElementById('importTargetSelect').value;
-        const result = importRosterRows(rows, target);
-        saveState();
-        renderStageWorkspace();
-        showToast(`استيراد Google Sheets: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+        if (!rows.length) throw new Error('الجدول لا يحتوي على بيانات قابلة للاستيراد');
+        showImportPreview(rows, 'Google Sheets');
       } catch (error) {
         showToast(error.message || 'تعذر استيراد Google Sheets؛ تحقق من صلاحية المشاركة', '⚠️');
       } finally {
         if (button) { button.disabled = false; button.textContent = 'استيراد من Google Sheets'; }
       }
+    });
+
+    // Assessment schedule controls and ministerial validation.
+    const scheduleModal = document.getElementById('modalSchedule');
+    const closeSchedule = () => { scheduleModal?.classList.add('hidden'); scheduleModal?.classList.remove('flex'); };
+    document.getElementById('btnOpenSchedule')?.addEventListener('click', () => {
+      renderScheduleManager();
+      scheduleModal?.classList.remove('hidden');
+      scheduleModal?.classList.add('flex');
+    });
+    document.getElementById('btnCloseSchedule')?.addEventListener('click', closeSchedule);
+    document.getElementById('btnSaveScheduledTest')?.addEventListener('click', () => {
+      const stage = getActiveStage();
+      const group = getCurrentStageGroup(stage);
+      if (!group) { showToast('أنشئ فوجاً قبل جدولة الفروض.', '⚠️'); return; }
+      const candidate = {
+        id: createStudentId('schedule'), stage, groupId: group.id, groupName: group.groupName,
+        subjectName: document.getElementById('scheduleSubject').value.trim(),
+        term: Number(document.getElementById('scheduleTerm').value),
+        testDate: document.getElementById('scheduleTestDate').value,
+        correctionDate: document.getElementById('scheduleCorrectionDate').value,
+        remediationDate: document.getElementById('scheduleRemediationDate').value,
+        examStartDate: document.getElementById('scheduleExamStartDate').value
+      };
+      if (!candidate.subjectName || !candidate.testDate || !candidate.correctionDate || !candidate.remediationDate || !candidate.examStartDate) {
+        showToast('أكمل المادة وجميع التواريخ المطلوبة.', '⚠️'); return;
+      }
+      const error = validateScheduledTest(candidate);
+      if (error) { showToast(error, '⚠️'); return; }
+      state.assessmentSchedule.push(candidate);
+      saveState();
+      renderScheduleManager();
+      showToast('تمت إضافة الفرض بعد اجتياز قيود الجدولة.');
+    });
+    document.getElementById('btnAddClosedWeek')?.addEventListener('click', () => {
+      const group = getCurrentStageGroup(getActiveStage());
+      if (!group) { showToast('أنشئ فوجاً أولاً.', '⚠️'); return; }
+      const startDate = document.getElementById('closedWeekStart').value;
+      const endDate = document.getElementById('closedWeekEnd').value;
+      if (!startDate || !endDate || startDate > endDate) { showToast('أدخل بداية ونهاية صحيحتين للأسبوع المغلق.', '⚠️'); return; }
+      const stage = getActiveStage();
+      const exists = state.closedWeeks.some(item => item.stage === stage && normalizeStudentName(item.groupName) === normalizeStudentName(group.groupName) && item.startDate === startDate && item.endDate === endDate);
+      if (exists) { showToast('فترة الأسبوع المغلق مسجلة مسبقاً.', '⚠️'); return; }
+      const conflicts = state.assessmentSchedule.some(item => item.stage === stage && normalizeStudentName(item.groupName) === normalizeStudentName(group.groupName) && item.testDate >= startDate && item.testDate <= endDate);
+      if (conflicts) { showToast('توجد فروض مجدولة داخل هذه الفترة؛ احذفها أو غيّر تواريخها أولاً.', '⚠️'); return; }
+      state.closedWeeks.push({ id: createStudentId('closed'), stage, groupId: group.id, groupName: group.groupName, startDate, endDate });
+      saveState();
+      renderScheduleManager();
+      showToast('تم حفظ فترة الأسبوع المغلق.');
+    });
+    document.getElementById('scheduleEntriesList')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-delete-schedule]');
+      if (!button) return;
+      state.assessmentSchedule = state.assessmentSchedule.filter(item => item.id !== button.getAttribute('data-delete-schedule'));
+      saveState(); renderScheduleManager();
+    });
+    document.getElementById('closedWeeksList')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-delete-closed-week]');
+      if (!button) return;
+      state.closedWeeks = state.closedWeeks.filter(item => item.id !== button.getAttribute('data-delete-closed-week'));
+      saveState(); renderScheduleManager();
     });
 
     // New Group Modal
@@ -2123,9 +2419,9 @@
       const hr = getStageHomeroom(getActiveStage());
       document.getElementById('subjectsConfigList').innerHTML = hr.subjects.map((sub, i) => `
         <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
-          <input type="text" value="${sub.name}" data-cfg-idx="${i}" data-cfg-field="name"
+          <input type="text" value="${escapeHtml(sub.name)}" data-cfg-idx="${i}" data-cfg-field="name"
             class="cfg-sub-input flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold" />
-          <input type="number" min="1" max="10" value="${sub.coeff}" data-cfg-idx="${i}" data-cfg-field="coeff"
+          <input type="number" min="1" max="10" value="${escapeHtml(sub.coeff)}" data-cfg-idx="${i}" data-cfg-field="coeff"
             class="cfg-sub-input num-input w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold" />
           <button type="button" data-cfg-del="${i}" class="btn-cfg-del-sub px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold">✕</button>
         </div>

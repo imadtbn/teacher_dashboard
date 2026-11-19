@@ -294,6 +294,8 @@
   let state = loadState();
   let searchSubjectQuery = '';
   let activeRubricStudentId = null;
+  let pendingImportRows = null;
+  let pendingImportSource = '';
   let chartInstances = { brackets: null, awards: null, components: null };
 
   function loadState() {
@@ -516,6 +518,39 @@
       }
     });
     return { added, skipped, updated };
+  }
+
+  function clearImportPreview() {
+    pendingImportRows = null;
+    pendingImportSource = '';
+    const preview = document.getElementById('importPreview');
+    if (preview) { preview.innerHTML = ''; preview.classList.add('hidden'); }
+    const button = document.getElementById('btnConfirmImport');
+    if (button) button.textContent = 'معاينة البيانات';
+  }
+
+  function showImportPreview(rows, source) {
+    pendingImportRows = rows;
+    pendingImportSource = source;
+    const preview = document.getElementById('importPreview');
+    if (preview) {
+      const sample = rows.slice(0, 6);
+      preview.innerHTML = `
+        <div class="mb-2 text-xs font-extrabold text-emerald-900">معاينة ${escapeHtml(source)} — ${rows.length} صفوف، قبل الاعتماد</div>
+        <div class="max-h-44 overflow-auto rounded-lg border border-slate-200 bg-white">
+          <table class="min-w-full text-[11px]"><tbody>
+            ${sample.map((row, index) => `<tr class="${index === 0 ? 'bg-slate-100 font-bold' : 'border-t border-slate-100'}">${row.slice(0, 8).map(cell => `<td class="whitespace-nowrap px-2 py-1">${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}
+          </tbody></table>
+        </div>
+        <p class="mt-1 text-[10px] text-slate-500">تأكد من ترتيب الأعمدة والوجهة قبل اعتماد الإضافة. لن تُنشأ علامات افتراضية للخانات غير الموجودة.</p>
+      `;
+      preview.classList.remove('hidden');
+    }
+    const button = document.getElementById('btnConfirmImport');
+    if (button) button.textContent = 'اعتماد البيانات المعروضة';
+    const modal = document.getElementById('modalImportNames');
+    modal?.classList.remove('hidden');
+    modal?.classList.add('flex');
   }
 
   function googleSheetsCsvUrl(value) {

@@ -42,6 +42,7 @@ const server = http.createServer((request, response) => {
     await page.locator('#newGroupNameInput').fill('فوج اختبار');
     await page.locator('#newGroupSubjectInput').fill('الرياضيات');
     await page.locator('#btnConfirmNewGroup').click();
+    await page.locator('#subjectYearLevelSelect').selectOption('p2');
     await page.locator('#btnAddStudentSubject').click();
 
     const manualName = page.locator('#subjectTableBody input[data-field="name"]').first();

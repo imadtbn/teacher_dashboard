@@ -1483,7 +1483,7 @@
         </div>
       `;
     } else if (stage === 'middle') {
-      subtitle.textContent = `التلميذ(ة): ${escapeHtml(st.name)} — شبكة معايير تقييم نشاطات التلاميذ للطور المتوسط (/20) وفق الصفحة 3 من المنشور 522/2026`;
+      subtitle.textContent = `التلميذ(ة): ${st.name} — شبكة معايير تقييم نشاطات التلاميذ للطور المتوسط (/20) وفق الصفحة 3 من المنشور 522/2026`;
       container.innerHTML = `
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
@@ -1503,7 +1503,7 @@
     } else {
       const hasExtra = (group.category === 'languages' || group.category === 'practical');
       const extraTitle = group.category === 'languages' ? 'ثانياً: شبكة التعبير الشفوي (/20)' : 'ثانياً: شبكة الأعمال التطبيقية (/20)';
-      subtitle.textContent = `التلميذ(ة): ${escapeHtml(st.name)} — شبكة المراقبة المستمرة للطور الثانوي وفق الصفحة 5 من المنشور 522/2026`;
+      subtitle.textContent = `التلميذ(ة): ${st.name} — شبكة المراقبة المستمرة للطور الثانوي وفق الصفحة 5 من المنشور 522/2026`;
       container.innerHTML = `
         <div class="space-y-3">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -119,7 +119,7 @@ test('CSV parser preserves decimal commas when semicolon is the delimiter', () =
 test('schedule blocks a second test for the same subject in the same term', () => {
   const existing = { stage: 'middle', groupId: 'g1', groupName: 'القسم 2م1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-01' };
   engine.setScheduleState({ assessmentSchedule: [existing], closedWeeks: [] });
-  const candidate = { stage: 'middle', groupId: 'g1', groupName: 'القسم 2م1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-04', correctionDate: '2026-11-05', remediationDate: '2026-11-06', examStartDate: '2026-11-15' };
+  const candidate = { stage: 'middle', groupId: 'g2', groupName: 'القسم 2م1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-04', correctionDate: '2026-11-05', remediationDate: '2026-11-06', examStartDate: '2026-11-15' };
   assert.match(engine.validateScheduledTest(candidate), /فرض مسجل مسبقاً/);
 });
 

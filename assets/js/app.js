@@ -533,7 +533,10 @@
           const qualitativeIndex = hasHeader ? importHeaderIndex(headers, [subject.name, subject.id]) : -1;
           const qualitativeRaw = qualitativeIndex >= 0 ? cells[qualitativeIndex] : '';
           const qualitative = QUALITATIVE_LEVELS.find(level => level.value === qualitativeRaw || normalizeImportHeader(level.label) === normalizeImportHeader(qualitativeRaw));
-          if (qualitative) qualitativeLevels[subject.id + '_t' + Number(homeroom.activeTerm || 1)] = qualitative.value;
+          if (qualitative) {
+            const qualitativeTerm = group && normalizeImportHeader(group.subjectName) === normalizeImportHeader(subject.name) ? group.term : homeroom.activeTerm;
+            qualitativeLevels[subject.id + '_t' + Number(qualitativeTerm || 1)] = qualitative.value;
+          }
           const isCurrentSubject = group && normalizeImportHeader(group.subjectName) === normalizeImportHeader(subject.name);
           const examAliases = [subject.name + ' اختبار', 'اختبار ' + subject.name, subject.id + '_exam', ...(isCurrentSubject ? ['الاختبار', 'علامة الاختبار', 'exam'] : [])];
           const devoirAliases = [subject.name + ' فرض', 'فرض ' + subject.name, subject.id + '_devoir', ...(isCurrentSubject ? ['الفرض', 'علامة الفرض', 'devoir'] : [])];

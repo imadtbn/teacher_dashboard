@@ -1690,9 +1690,7 @@
           <thead>
             <tr class="bg-slate-800 text-white">
               <th class="p-2.5">المادة التعليمية</th>
-              <th class="p-2.5 text-center">المعدل الفصلي</th>
-              <th class="p-2.5 text-center">المعامل</th>
-              <th class="p-2.5 text-center">الجداء</th>
+              <th class="p-2.5 text-center" colspan="3">${c.isPriY1 ? 'التقييم الوصفي' : 'المعدل الفصلي / المعامل / الجداء'}</th>
               <th class="p-2.5">الملاحظة البيداغوجية</th>
             </tr>
           </thead>
@@ -1702,11 +1700,9 @@
           </tbody>
           <tfoot>
             <tr class="bg-slate-100 font-extrabold border-t-2 border-slate-400">
-              <td class="p-2.5">المجموع العام</td>
-              <td class="p-2.5 text-center">-</td>
-              <td class="p-2.5 text-center num-cell">${c.sumCoeffs}</td>
-              <td class="p-2.5 text-center text-purple-950 num-cell">${c.finalWeightedSum.toFixed(2)}</td>
-              <td class="p-2.5 text-xs">${stage === 'secondary' ? `شامل لفائض المشاريع والمطالعة (+${c.totalBonus.toFixed(2)})` : 'مجموع جداءات المواد'}</td>
+              ${c.isPriY1
+                ? `<td class="p-2.5 font-bold text-sky-900" colspan="4">تقييم وصفي نوعي — المواظبة: ${c.autoPassEligible ? 'منتظمة' : 'غير مؤكدة'}</td><td class="p-2.5 text-xs">${c.autoPassEligible ? 'مؤهل للانتقال الآلي' : 'لم يثبت شرط المواظبة'}</td>`
+                : `<td class="p-2.5">المجموع العام</td><td class="p-2.5 text-center">-</td><td class="p-2.5 text-center num-cell">${c.sumCoeffs}</td><td class="p-2.5 text-center text-purple-950 num-cell">${c.finalWeightedSum.toFixed(2)}</td><td class="p-2.5 text-xs">${stage === 'secondary' ? `شامل لفائض المشاريع والمطالعة (+${c.totalBonus.toFixed(2)})` : 'مجموع جداءات المواد'}</td>`}
             </tr>
           </tfoot>
         </table>
@@ -1765,15 +1761,28 @@
     if (subTab === 'homeroom') {
       const hr = getStageHomeroom(stage);
       aoa.push([`كشف المعدلات الشامل للقسم: ${hr.className} (الفصل ${hr.activeTerm})`]);
-      const headers = ['الرقم', 'اللقب والاسم', ...hr.subjects.map(s => `${s.name} (معامل ${s.coeff})`)];
-      if (stage === 'secondary') headers.push('المشاريع الدراسية (/20)', 'المطالعة (/20)', 'فائض النقاط (+)');
-      headers.push('مجموع الجداءات', 'المعدل الفصلي', 'معدل الفصل 2', 'معدل الفصل 3', 'المعدل السنوي', 'قرار مجلس القسم');
+      const isPriY1Export = stage === 'primary' && hr.preset === 'pri_y1';
+      const headers = isPriY1Export
+        ? ['الرقم', 'اللقب والاسم', ...hr.subjects.map(subject => subject.name + ' (تقييم وصفي)'), 'المواظبة المنتظمة', 'قرار الانتقال']
+        : ['الرقم', 'اللقب والاسم', ...hr.subjects.map(subject => `${subject.name} (معامل ${subject.coeff})`)];
+      if (!isPriY1Export) {
+        if (stage === 'secondary') headers.push('المشاريع الدراسية (/20)', 'المطالعة (/20)', 'فائض النقاط (+)');
+        headers.push('مجموع الجداءات', 'المعدل الفصلي', 'معدل الفصل 2', 'معدل الفصل 3', 'المعدل السنوي', 'قرار مجلس القسم');
+      }
       aoa.push(headers);
 
       hr.students.forEach((st, idx) => {
         const c = computeHomeroomStudent(st, hr);
         const row = [idx + 1, st.name];
-        hr.subjects.forEach(s => row.push(Number((parseFloat(st.grades[s.id]) || 0).toFixed(2))));
+        if (isPriY1Export) {
+          hr.subjects.forEach(subject => {
+            row.push(QUALITATIVE_LEVELS.find(level => level.value === st.qualitativeLevels?.[subject.id])?.label || 'لم يقيّم بعد');
+          });
+          row.push(st.attendanceRegular === true ? 'مواظب بانتظام' : 'غير مؤكد', c.autoPassEligible ? 'ينتقل آلياً' : 'لم يثبت شرط المواظبة');
+          aoa.push(row);
+          return;
+        }
+        hr.subjects.forEach(subject => row.push(Number((parseFloat(st.grades[subject.id]) || 0).toFixed(2))));
         if (stage === 'secondary') row.push(Number(c.projectScore.toFixed(2)), Number(c.readingScore.toFixed(2)), Number(c.totalBonus.toFixed(2)));
         row.push(Number(c.finalWeightedSum.toFixed(2)), Number(c.termAvg.toFixed(2)), Number(c.t2.toFixed(2)), Number(c.t3.toFixed(2)), Number(c.annualAvg.toFixed(2)), c.award.label);
         aoa.push(row);

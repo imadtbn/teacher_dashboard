@@ -57,7 +57,7 @@
 
 اختبار المتصفح يستخدم Playwright وChromium:
 
-    npm install --no-save playwright
+    npm install --no-save playwright xlsx
     npx playwright install chromium
     node tests/browser-smoke.cjs
 

@@ -359,6 +359,54 @@
   function getStageHomeroom(stage) {
     return state.homeroomByStage[stage] || state.homeroomByStage.secondary;
   }
+  function normalizeStudentName(value) {
+    return String(value || '').normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('ar');
+  }
+
+  function createStudentId(prefix) {
+    return (window.crypto && window.crypto.randomUUID)
+      ? window.crypto.randomUUID()
+      : prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+  }
+
+  function addStudentNames(names, target) {
+    const stage = getActiveStage();
+    const group = getCurrentStageGroup(stage);
+    const homeroom = getStageHomeroom(stage);
+    const cleanNames = [...new Set(names.map(name => String(name || '').trim().replace(/\\s+/g, ' ')).filter(Boolean))];
+    let added = 0;
+    let skipped = 0;
+
+    if (target === 'subject' || target === 'both') {
+      if (!group) {
+        showToast('أنشئ فوج المادة أولاً قبل إضافة التلاميذ', '⚠️');
+        return { added: 0, skipped: cleanNames.length };
+      }
+      const existing = new Set(group.students.map(student => normalizeStudentName(student.name)));
+      cleanNames.forEach(name => {
+        const key = normalizeStudentName(name);
+        if (existing.has(key)) { skipped++; return; }
+        group.students.push({ id: createStudentId('st'), name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: 'A', customRemark: '', rubric: {} });
+        existing.add(key);
+        added++;
+      });
+    }
+
+    if (target === 'homeroom' || target === 'both') {
+      const existing = new Set(homeroom.students.map(student => normalizeStudentName(student.name)));
+      cleanNames.forEach(name => {
+        const key = normalizeStudentName(name);
+        if (existing.has(key)) { skipped++; return; }
+        const grades = {};
+        homeroom.subjects.forEach(subject => { grades[subject.id] = 0; });
+        homeroom.students.push({ id: createStudentId('hr'), name, grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0 });
+        existing.add(key);
+        added++;
+      });
+    }
+    return { added, skipped };
+  }
+
 
   function isPrimaryQualitativeOnly(group) {
     if (group.stage !== 'primary') return false;
@@ -1472,59 +1520,30 @@
   function handleExcelFileUpload(file) {
     if (!file || typeof XLSX === 'undefined') return;
     const reader = new FileReader();
-    reader.onload = function (e) {
+    reader.onload = function (event) {
       try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
-
-        const importedNames = [];
-        rows.forEach((row) => {
-          if (!Array.isArray(row) || row.length === 0) return;
-          const candidate = row.map(c => String(c).trim()).find(val => {
-            if (!val || val.length < 3) return false;
-            if (/^[0-9.,/-]+$/.test(val)) return false;
-            const headerWords = ['الرقم', 'اللقب', 'الاسم', 'الإسم', 'تاريخ', 'ملاحظة', 'المعدل', 'وزارة', 'الجمهورية', 'القسم', 'الفوج'];
-            if (headerWords.some(h => val.includes(h))) return false;
-            return true;
-          });
-          if (candidate) importedNames.push(candidate);
-        });
-
-        if (importedNames.length === 0) {
-          showToast('لم يتم العثور على أسماء صالحة في ملف Excel المرفوع', '⚠️');
+        const workbook = XLSX.read(new Uint8Array(event.target.result), { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        const headerWords = ['الرقم', 'اللقب', 'الاسم', 'الإسم', 'تاريخ', 'ملاحظة', 'المعدل', 'وزارة', 'الجمهورية', 'القسم', 'الفوج'];
+        const names = rows.map(row => {
+          if (!Array.isArray(row) || !row.length) return '';
+          const cells = row.map(cell => String(cell == null ? '' : cell).trim()).filter(Boolean);
+          if (!cells.length || cells.some(cell => headerWords.some(word => cell === word))) return '';
+          const textCells = cells.filter(cell => cell.length >= 3 && !/^[0-9.,/-]+$/.test(cell));
+          return textCells.length ? textCells.slice(0, 2).join(' ').trim() : '';
+        }).filter(Boolean);
+        if (!names.length) {
+          showToast('لم يتم العثور على أسماء صالحة في ملف Excel', '⚠️');
           return;
         }
-
-        const stage = getActiveStage();
-        const grp = getCurrentStageGroup(stage);
-        const hr = getStageHomeroom(stage);
-        const defVal = stage === 'primary' ? 7 : 13;
-
-        importedNames.forEach((name, idx) => {
-          if (grp) {
-            grp.students.push({
-              id: 'xl_s_' + Date.now() + '_' + idx,
-              name, cont: defVal, devoir: defVal - 1, extra: defVal,
-              exam: stage === 'primary' ? 7 : (grp.examScale === 20 ? 12 : 24),
-              qualLevel: 'A', customRemark: '', rubric: {}
-            });
-          }
-          if (hr) {
-            const grades = {};
-            hr.subjects.forEach(s => { grades[s.id] = defVal; });
-            hr.students.push({
-              id: 'xl_h_' + Date.now() + '_' + idx,
-              name, grades, projectScore: 14, readingScore: 14, t2Avg: defVal, t3Avg: defVal
-            });
-          }
-        });
-
+        const target = document.getElementById('importTargetSelect')?.value || 'subject';
+        const result = addStudentNames(names, target);
         saveState();
         renderStageWorkspace();
-        showToast(`تم استيراد ${importedNames.length} تلميذاً من ملف Excel بنجاح!`);
-      } catch (err) {
+        showToast(`تمت إضافة ${result.added} تلميذاً من Excel، وتجاوز ${result.skipped} اسماً مكرراً أو غير صالح`);
+      } catch (error) {
+        console.error('Excel import failed:', error);
         showToast('تعذر قراءة ملف Excel المرفوع', '⚠️');
       }
     };
@@ -1913,36 +1932,15 @@
     document.getElementById('btnCancelImport')?.addEventListener('click', closeImport);
     document.getElementById('btnConfirmImport')?.addEventListener('click', () => {
       const raw = document.getElementById('importNamesTextarea').value;
-      const names = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      const names = raw.split(/\\r?\\n/).map(value => value.trim()).filter(Boolean);
       if (names.length === 0) return;
       const target = document.getElementById('importTargetSelect').value;
-      const stage = getActiveStage();
-      const grp = getCurrentStageGroup(stage);
-      const hr = getStageHomeroom(stage);
-      const defVal = stage === 'primary' ? 7 : 13;
-      if ((target === 'subject' || target === 'both') && grp) {
-        names.forEach((n, idx) => {
-          grp.students.push({
-            id: 'imp_s_' + Date.now() + '_' + idx,
-            name: n, cont: defVal, devoir: defVal - 1, extra: defVal, exam: defVal, qualLevel: 'A', customRemark: '', rubric: {}
-          });
-        });
-      }
-      if ((target === 'homeroom' || target === 'both') && hr) {
-        names.forEach((n, idx) => {
-          const grades = {};
-          hr.subjects.forEach(s => { grades[s.id] = defVal; });
-          hr.students.push({
-            id: 'imp_h_' + Date.now() + '_' + idx,
-            name: n, grades, projectScore: 14, readingScore: 14, t2Avg: defVal, t3Avg: defVal
-          });
-        });
-      }
+      const result = addStudentNames(names, target);
       document.getElementById('importNamesTextarea').value = '';
       saveState();
       closeImport();
       renderStageWorkspace();
-      showToast(`تم استيراد ${names.length} تلميذاً بنجاح`);
+      showToast(`تمت إضافة ${result.added} تلميذاً، وتجاوز ${result.skipped} اسماً مكرراً أو غير قابل للإضافة`);
     });
 
     // New Group Modal

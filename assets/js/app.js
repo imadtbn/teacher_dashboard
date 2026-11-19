@@ -1255,11 +1255,13 @@
           <input type="number" min="0" max="20" step="0.25" value="${clamp(st.projectScore, 0, 20)}"
             data-hr-student="${escapeHtml(st.id)}" data-hr-field="projectScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
+          <span class="block mt-1 max-w-[110px] text-[9px] leading-3 text-rose-700">${escapeHtml(c.warnings.join("، "))}</span>
         </td>
         <td class="p-1.5 text-center bg-amber-50/40 border-l border-amber-100">
           <input type="number" min="0" max="20" step="0.25" value="${clamp(st.readingScore, 0, 20)}"
             data-hr-student="${escapeHtml(st.id)}" data-hr-field="readingScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
+          <span class="block mt-1 max-w-[110px] text-[9px] leading-3 text-rose-700">${escapeHtml(c.warnings.join("، "))}</span>
         </td>
         <td class="p-2 text-center font-extrabold text-amber-800 bg-amber-100/50 border-l border-amber-200 num-cell">+${c.totalBonus.toFixed(2)}</td>
       ` : '';

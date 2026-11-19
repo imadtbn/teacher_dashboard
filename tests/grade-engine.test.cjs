@@ -25,7 +25,7 @@ const declarations = [
   ];`,
   'let state = { assessmentSchedule: [], closedWeeks: [] };',
   ...['clamp', 'escapeHtml', 'normalizeStudentName', 'parseCsvRows', 'googleSheetsCsvUrl', 'migrateLegacyState', 'isPrimaryQualitativeOnly', 'generatePedagogicalRemark', 'getCouncilAward', 'computeStudentSubjectGrade', 'computeHomeroomStudent', 'validateScheduledTest'].map(extractFunction),
-  'this.engine = { computeStudentSubjectGrade, computeHomeroomStudent, parseCsvRows, googleSheetsCsvUrl, escapeHtml, migrateLegacyState, validateScheduledTest, setScheduleState(value) { state = value; } };'
+  'this.engine = { computeStudentSubjectGrade, computeHomeroomStudent, parseCsvRows, googleSheetsCsvUrl, escapeHtml, migrateLegacyState, validateScheduledTest, isPrimaryQualitativeOnly, setScheduleState(value) { state = value; } };'
 ].join('\n');
 
 const sandbox = { URL };
@@ -177,4 +177,19 @@ test('legacy migration removes seeded demo records but preserves custom student 
   assert.equal(migrated.homeroomByStage.primary.students.length, 1);
   assert.equal(migrated.teacherName, '');
   assert.equal(migrated.schoolName, '');
+});
+
+test('primary term-one language exceptions remain qualitative only', () => {
+  assert.equal(engine.isPrimaryQualitativeOnly({ stage: 'primary', yearLevel: 'p3', term: 1, category: 'pri_eng_p3' }), true);
+  assert.equal(engine.isPrimaryQualitativeOnly({ stage: 'primary', yearLevel: 'p4', term: 1, category: 'pri_fr_amz_p4' }), true);
+  assert.equal(engine.isPrimaryQualitativeOnly({ stage: 'primary', yearLevel: 'p3', term: 2, category: 'pri_eng_p3' }), false);
+});
+
+test('unassessed first-grade student does not receive a default qualitative level', () => {
+  const result = engine.computeStudentSubjectGrade(
+    { cont: 0, exam: 0, qualLevel: '' },
+    { stage: 'primary', yearLevel: 'p1', category: 'pri_core', term: 1, coeff: 1 }
+  );
+  assert.equal(result.qualInfo.label, 'لم يقيّم بعد');
+  assert.equal(result.avg, 0);
 });

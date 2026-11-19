@@ -376,9 +376,9 @@
   function parseCsvRows(text) {
     const rows = [];
     let row = [], cell = '', quoted = false;
-    const source = String(text || '').replace(/^\\uFEFF/, '');
-    const firstLine = source.split(/\\r?\\n/).find(line => line.trim()) || '';
-    const delimiterCounts = ['\\t', ';', ','].map(delimiter => {
+    const source = String(text || '').replace(/^\uFEFF/, '');
+    const firstLine = source.split(/\r?\n/).find(line => line.trim()) || '';
+    const delimiterCounts = ['\t', ';', ','].map(delimiter => {
       let count = 0, inQuotes = false;
       for (let i = 0; i < firstLine.length; i++) {
         if (firstLine[i] === '"') inQuotes = !inQuotes;
@@ -386,14 +386,14 @@
       }
       return count;
     });
-    const delimiter = delimiterCounts[0] > 0 ? '\\t' : delimiterCounts[1] > 0 ? ';' : ',';
+    const delimiter = delimiterCounts[0] > 0 ? '\t' : delimiterCounts[1] > 0 ? ';' : ',';
     for (let i = 0; i < source.length; i++) {
       const ch = source[i];
       if (ch === '"' && quoted && source[i + 1] === '"') { cell += '"'; i++; }
       else if (ch === '"') quoted = !quoted;
       else if (ch === delimiter && !quoted) { row.push(cell.trim()); cell = ''; }
-      else if ((ch === '\\n' || ch === '\\r') && !quoted) {
-        if (ch === '\\r' && source[i + 1] === '\\n') i++;
+      else if ((ch === '\n' || ch === '\r') && !quoted) {
+        if (ch === '\r' && source[i + 1] === '\n') i++;
         row.push(cell.trim());
         if (row.some(value => value !== '')) rows.push(row);
         row = []; cell = '';

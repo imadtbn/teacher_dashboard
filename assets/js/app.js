@@ -303,7 +303,38 @@
       const currentRaw = localStorage.getItem(STORAGE_KEY);
       if (currentRaw) {
         const current = JSON.parse(currentRaw);
-        if (current && Array.isArray(current.groups) && current.homeroomByStage) return current;
+        if (current && Array.isArray(current.groups) && current.homeroomByStage) {
+          current.assessmentSchedule = Array.isArray(current.assessmentSchedule) ? current.assessmentSchedule : [];
+          current.closedWeeks = Array.isArray(current.closedWeeks) ? current.closedWeeks : [];
+          current.activeGroupByStage = current.activeGroupByStage || { primary: '', middle: '', secondary: '' };
+          current.stageSubTab = current.stageSubTab || { primary: 'subject', middle: 'subject', secondary: 'subject' };
+          current.groups.forEach(group => {
+            group.students = Array.isArray(group.students) ? group.students : [];
+            group.students.forEach(student => {
+              if (!student.studentKey) student.studentKey = createStudentId('student');
+              student.rubric = student.rubric || {};
+              if (student.qualLevel === undefined) student.qualLevel = '';
+            });
+          });
+          Object.values(current.homeroomByStage).forEach(homeroom => {
+            if (!homeroom) return;
+            homeroom.students = Array.isArray(homeroom.students) ? homeroom.students : [];
+            homeroom.subjects = Array.isArray(homeroom.subjects) ? homeroom.subjects : [];
+            homeroom.students.forEach(student => {
+              student.grades = student.grades || {};
+              student.examMarks = student.examMarks || {};
+              student.devoirMarks = student.devoirMarks || {};
+              student.qualitativeLevels = student.qualitativeLevels || {};
+              if (student.attendanceRegular !== true) student.attendanceRegular = false;
+              if (!student.studentKey) {
+                const match = current.groups.find(group => group.stage === homeroom.stage && group.students.some(item => normalizeStudentName(item.name) === normalizeStudentName(student.name)));
+                const linked = match?.students.find(item => normalizeStudentName(item.name) === normalizeStudentName(student.name));
+                student.studentKey = linked?.studentKey || createStudentId('student');
+              }
+            });
+          });
+          return current;
+        }
       }
       const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
       if (legacyRaw) {

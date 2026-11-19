@@ -24,8 +24,8 @@ const declarations = [
     { value: 'D', label: 'تحكم أدنى', numEquiv: 3.5 }
   ];`,
   'let state = { assessmentSchedule: [], closedWeeks: [] };',
-  ...['clamp', 'normalizeStudentName', 'parseCsvRows', 'isPrimaryQualitativeOnly', 'generatePedagogicalRemark', 'getCouncilAward', 'computeStudentSubjectGrade', 'computeHomeroomStudent', 'validateScheduledTest'].map(extractFunction),
-  'this.engine = { computeStudentSubjectGrade, computeHomeroomStudent, parseCsvRows, validateScheduledTest, setScheduleState(value) { state = value; } };'
+  ...['clamp', 'escapeHtml', 'normalizeStudentName', 'parseCsvRows', 'googleSheetsCsvUrl', 'migrateLegacyState', 'isPrimaryQualitativeOnly', 'generatePedagogicalRemark', 'getCouncilAward', 'computeStudentSubjectGrade', 'computeHomeroomStudent', 'validateScheduledTest'].map(extractFunction),
+  'this.engine = { computeStudentSubjectGrade, computeHomeroomStudent, parseCsvRows, googleSheetsCsvUrl, escapeHtml, migrateLegacyState, validateScheduledTest, setScheduleState(value) { state = value; } };'
 ].join('\n');
 
 const sandbox = {};
@@ -151,4 +151,30 @@ test('secondary project and reading marks are flagged when reused from subject t
     { stage: 'secondary', preset: 'sec_sci', activeTerm: 1, subjects: [{ id: 'math', coeff: 1 }] }
   );
   assert.equal(result.warnings.length, 2);
+});
+
+test('HTML escaping treats imported student names as text', () => {
+  assert.equal(engine.escapeHtml('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
+});
+
+test('Google Sheets edit links are normalized to CSV export URLs', () => {
+  assert.equal(
+    engine.googleSheetsCsvUrl('https://docs.google.com/spreadsheets/d/abc123/edit#gid=42'),
+    'https://docs.google.com/spreadsheets/d/abc123/export?format=csv&gid=42'
+  );
+});
+
+test('legacy migration removes seeded demo records but preserves custom student rows', () => {
+  const legacy = {
+    teacherName: 'الأستاذ(ة): بن سالم عبد القادر',
+    schoolName: 'مؤسسة التربية والتعليم - سيدي داود (بومرداس)',
+    groups: [{ id: 'grp_pri_1', stage: 'primary', students: [{ id: 'p1', name: 'sample' }, { id: 'custom-1', name: 'real student' }] }],
+    homeroomByStage: { primary: { className: 'السنة 3 ابتدائي - الفوج 1', students: [{ id: 'hp1', name: 'sample' }, { id: 'custom-2', name: 'real student' }] } }
+  };
+  const migrated = engine.migrateLegacyState(legacy);
+  assert.equal(migrated.groups[0].students.length, 1);
+  assert.equal(migrated.groups[0].students[0].id, 'custom-1');
+  assert.equal(migrated.homeroomByStage.primary.students.length, 1);
+  assert.equal(migrated.teacherName, '');
+  assert.equal(migrated.schoolName, '');
 });

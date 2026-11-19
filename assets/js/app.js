@@ -580,7 +580,7 @@
     const coeff = Math.max(1, parseInt(group.coeff, 10) || 1);
     const weighted = avg * coeff;
     const autoRemark = qualOnly
-      ? `${qualInfo.label} ${group.yearLevel === 'p1' ? '— انتقال آلي للسنة 2 ابتدائي' : '— تقييم وصفي نوعي (ف1)'}`
+      ? `${qualInfo.label} ${group.yearLevel === 'p1' ? '— تقييم وصفي نوعي، والانتقال مشروط بالمواظبة المنتظمة' : '— تقييم وصفي نوعي (ف1)'}`
       : generatePedagogicalRemark(avg, maxBase, isPrimary ? examOn10 : examOn20);
 
     return {
@@ -630,14 +630,17 @@
     const t3 = clamp(student.t3Avg !== undefined ? student.t3Avg : termAvg, 0, scaleMax);
     const annualAvg = (termAvg + t2 + t3) / 3;
 
+    const autoPassEligible = isPriY1 && student.attendanceRegular === true;
     const award = isPriY1
-      ? { label: 'انتقال آلي (سنة 1)', cls: 'bg-sky-100 text-sky-900 border-sky-300' }
+      ? (autoPassEligible
+        ? { label: 'انتقال آلي — مواظب', cls: 'bg-sky-100 text-sky-900 border-sky-300' }
+        : { label: 'المواظبة غير مؤكدة', cls: 'bg-amber-100 text-amber-900 border-amber-300' })
       : getCouncilAward(termAvg, scaleMax);
 
     return {
       isPrimary, isPriY1, scaleMax, sumWeightedSubjects, sumCoeffs,
       projectScore, readingScore, bonusProject, bonusReading, totalBonus,
-      finalWeightedSum, termAvg, t2, t3, annualAvg, award
+      finalWeightedSum, termAvg, t2, t3, annualAvg, autoPassEligible, award
     };
   }
 
@@ -1110,10 +1113,10 @@
     const count = computedList.length;
     const avgTerm = count > 0 ? computedList.reduce((a, b) => a + b.calc.termAvg, 0) / count : 0;
     const avgAnnual = count > 0 ? computedList.reduce((a, b) => a + b.calc.annualAvg, 0) / count : 0;
-    const passCount = isPriY1 ? count : computedList.filter(i => i.calc.termAvg >= meta.passMark).length;
+    const passCount = isPriY1 ? computedList.filter(i => i.calc.autoPassEligible).length : computedList.filter(i => i.calc.termAvg >= meta.passMark).length;
     const passRate = count > 0 ? Math.round((passCount / count) * 100) : 0;
     const avgBonus = count > 0 ? computedList.reduce((a, b) => a + b.calc.totalBonus, 0) / count : 0;
-    const honorCount = computedList.filter(i => (scaleMax === 10 ? i.calc.termAvg >= 6 : i.calc.termAvg >= 12)).length;
+    const honorCount = isPriY1 ? 0 : computedList.filter(i => (scaleMax === 10 ? i.calc.termAvg >= 6 : i.calc.termAvg >= 12)).length;
 
     document.getElementById('kpiHomeCount').textContent = String(count);
     document.getElementById('kpiHomeTermAvg').textContent = isPriY1 ? 'وصفي' : avgTerm.toFixed(2);
@@ -1207,6 +1210,7 @@
           <td class="p-2 border-l border-slate-100">
             <input type="text" value="${st.name}" data-hr-student="${st.id}" data-hr-field="name"
               class="hr-meta-input w-full bg-transparent font-bold text-slate-800 px-1 py-0.5 rounded" />
+            ${isPriY1 ? `<label class="mt-1 flex items-center gap-1 text-[10px] font-semibold text-sky-800"><input type="checkbox" class="hr-attendance-input" data-hr-student="${st.id}" ${st.attendanceRegular === true ? 'checked' : ''} /> مواظب بانتظام (شرط الانتقال)</label>` : ''}
           </td>
           ${subInputsHtml}
           ${secCellsHtml}
@@ -1222,7 +1226,7 @@
               data-hr-student="${st.id}" data-hr-field="t3Avg"
               class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />
           </td>
-          <td class="p-2 text-center text-sm ${annualAvgCls} num-cell">${isPriY1 ? 'ينتقل آلياً' : c.annualAvg.toFixed(2)}</td>
+          <td class="p-2 text-center text-sm ${annualAvgCls} num-cell">${isPriY1 ? (c.autoPassEligible ? 'ينتقل آلياً' : 'غير مؤهل بعد') : c.annualAvg.toFixed(2)}</td>
           <td class="p-2 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
           <td class="p-2 text-center">
             <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${c.award.cls}">${c.award.label}</span>
@@ -1861,7 +1865,7 @@
           hrStudent = {
             id: createStudentId('hr'), studentKey: st.studentKey || createStudentId('student'),
             name: st.name, grades: {}, projectScore: 0, readingScore: 0,
-            t2Avg: 0, t3Avg: 0
+            t2Avg: 0, t3Avg: 0, attendanceRegular: false
           };
           hr.students.push(hrStudent);
         }
@@ -1959,7 +1963,7 @@
       hr.subjects.forEach(subject => { grades[subject.id] = 0; });
       hr.students.push({
         id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'hrs_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        name: '', grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0
+        name: '', grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0, attendanceRegular: false
       });
       saveState();
       renderStageWorkspace();
@@ -1977,7 +1981,10 @@
       const stage = getActiveStage();
       const hr = getStageHomeroom(stage);
       const scaleMax = stage === 'primary' ? 10 : 20;
-      if (t.classList.contains('hr-grade-input')) {
+      if (t.classList.contains('hr-attendance-input')) {
+        const st = hr.students.find(student => student.id === t.getAttribute('data-hr-student'));
+        if (st) { st.attendanceRegular = t.checked; saveState(); renderStageWorkspace(); }
+      } else if (t.classList.contains('hr-grade-input')) {
         const st = hr.students.find(s => s.id === t.getAttribute('data-hr-student'));
         if (st) {
           st.grades[t.getAttribute('data-hr-sub')] = clamp(t.value, 0, scaleMax);

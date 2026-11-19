@@ -1742,11 +1742,8 @@
         const workbook = XLSX.read(new Uint8Array(event.target.result), { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-        const target = document.getElementById('importTargetSelect')?.value || 'subject';
-        const result = importRosterRows(rows, target);
-        saveState();
-        renderStageWorkspace();
-        showToast(`استيراد Excel: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+        if (!rows.length) { showToast('ملف Excel لا يحتوي على صفوف.', '⚠️'); return; }
+        showImportPreview(rows, 'Excel');
       } catch (error) {
         console.error('Excel import failed:', error);
         showToast('تعذر قراءة ملف Excel أو مطابقة أعمدته', '⚠️');
@@ -2138,7 +2135,7 @@
 
     // Paste Modal
     const modalImport = document.getElementById('modalImportNames');
-    const closeImport = () => { modalImport?.classList.add('hidden'); modalImport?.classList.remove('flex'); };
+    const closeImport = () => { clearImportPreview(); modalImport?.classList.add('hidden'); modalImport?.classList.remove('flex'); };
     document.getElementById('btnOpenPasteModal')?.addEventListener('click', () => {
       modalImport?.classList.remove('hidden');
       modalImport?.classList.add('flex');
@@ -2146,16 +2143,22 @@
     document.getElementById('btnCloseImportModal')?.addEventListener('click', closeImport);
     document.getElementById('btnCancelImport')?.addEventListener('click', closeImport);
     document.getElementById('btnConfirmImport')?.addEventListener('click', () => {
-      const raw = document.getElementById('importNamesTextarea').value;
-      const rows = parseCsvRows(raw);
-      if (!rows.length) return;
+      if (!pendingImportRows) {
+        const rows = parseCsvRows(document.getElementById('importNamesTextarea').value);
+        if (!rows.length) return;
+        showImportPreview(rows, 'الجدول الملصوق');
+        return;
+      }
       const target = document.getElementById('importTargetSelect').value;
-      const result = importRosterRows(rows, target);
+      const result = importRosterRows(pendingImportRows, target);
       document.getElementById('importNamesTextarea').value = '';
       saveState();
       closeImport();
       renderStageWorkspace();
       showToast(`استيراد مكتمل: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+    });
+    document.getElementById('importNamesTextarea')?.addEventListener('input', () => {
+      if (pendingImportRows) clearImportPreview();
     });
 
     document.getElementById('btnImportGoogleSheet')?.addEventListener('click', async () => {
@@ -2168,11 +2171,8 @@
         const response = await fetch(csvUrl, { mode: 'cors', credentials: 'omit' });
         if (!response.ok) throw new Error('تعذر الوصول إلى الجدول. تحقق من نشره أو صلاحية العرض عبر الرابط');
         const rows = parseCsvRows(await response.text());
-        const target = document.getElementById('importTargetSelect').value;
-        const result = importRosterRows(rows, target);
-        saveState();
-        renderStageWorkspace();
-        showToast(`استيراد Google Sheets: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+        if (!rows.length) throw new Error('الجدول لا يحتوي على بيانات قابلة للاستيراد');
+        showImportPreview(rows, 'Google Sheets');
       } catch (error) {
         showToast(error.message || 'تعذر استيراد Google Sheets؛ تحقق من صلاحية المشاركة', '⚠️');
       } finally {

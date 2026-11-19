@@ -28,7 +28,6 @@ const server = http.createServer((request, response) => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  await page.route('https://cdn.tailwindcss.com/**', route => route.abort());
   await page.route('https://cdn.jsdelivr.net/**', route => route.abort());
   await page.addInitScript(() => localStorage.clear());
 
@@ -61,9 +60,13 @@ const server = http.createServer((request, response) => {
     assert.match(await page.locator('#importPreview').innerText(), /تلميذ مستورد/);
     await page.locator('#btnConfirmImport').click();
     assert.equal(await page.locator('#subjectTableBody input[data-field="name"]').count(), 2);
-    const importedRow = page.locator('#subjectTableBody tr').filter({ has: page.locator('input[value="تلميذ مستورد"]') });
+    const importedRow = page.locator('#subjectTableBody tr').nth(1);
     assert.equal(await importedRow.locator('input[data-field="cont"]').inputValue(), '8');
     assert.equal(await importedRow.locator('input[data-field="exam"]').inputValue(), '7');
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    assert.equal(await page.locator('#subjectTableBody input[data-field="name"]').count(), 2, 'roster persists after reload');
+    assert.equal(await page.locator('#subjectTableBody img').count(), 0, 'stored names remain escaped after reload');
 
     await page.locator('#btnOpenSchedule').click();
     await page.locator('#scheduleSubject').fill('الرياضيات');

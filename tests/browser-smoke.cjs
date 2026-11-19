@@ -45,6 +45,7 @@ const server = http.createServer((request, response) => {
     const afterGroup = await page.evaluate(() => JSON.parse(localStorage.getItem('dz_teacher_grade_dashboard_v4_multi') || '{}'));
     assert.equal(afterGroup.groups?.length, 1, 'new group is persisted');
     await page.locator('#subjectYearLevelSelect').selectOption('p2');
+    await page.locator('#btnStageSubSubject').click();
     await page.locator('#searchSubjectStudent').fill('');
     await page.locator('#btnAddStudentSubject').click();
     await page.waitForTimeout(200);

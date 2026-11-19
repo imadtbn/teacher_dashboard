@@ -23,8 +23,9 @@ const declarations = [
     { value: 'C', label: 'تحكم جزئي', numEquiv: 5.5 },
     { value: 'D', label: 'تحكم أدنى', numEquiv: 3.5 }
   ];`,
-  ...['clamp', 'isPrimaryQualitativeOnly', 'generatePedagogicalRemark', 'getCouncilAward', 'computeStudentSubjectGrade', 'computeHomeroomStudent'].map(extractFunction),
-  'this.engine = { computeStudentSubjectGrade, computeHomeroomStudent };'
+  'let state = { assessmentSchedule: [], closedWeeks: [] };',
+  ...['clamp', 'normalizeStudentName', 'parseCsvRows', 'isPrimaryQualitativeOnly', 'generatePedagogicalRemark', 'getCouncilAward', 'computeStudentSubjectGrade', 'computeHomeroomStudent', 'validateScheduledTest'].map(extractFunction),
+  'this.engine = { computeStudentSubjectGrade, computeHomeroomStudent, parseCsvRows, validateScheduledTest, setScheduleState(value) { state = value; } };'
 ].join('\n');
 
 const sandbox = {};
@@ -108,4 +109,38 @@ test('first-grade automatic promotion requires regular attendance', () => {
   const unknown = engine.computeHomeroomStudent({ grades: { arab: 0 }, attendanceRegular: false }, homeroom);
   assert.equal(present.autoPassEligible, true);
   assert.equal(unknown.autoPassEligible, false);
+});
+
+test('CSV parser preserves decimal commas when semicolon is the delimiter', () => {
+  const rows = engine.parseCsvRows('الاسم;التقييم المستمر\\n"بن علي، محمد";13,5');
+  assert.deepEqual(JSON.parse(JSON.stringify(rows)), [['الاسم', 'التقييم المستمر'], ['بن علي، محمد', '13,5']]);
+});
+
+test('schedule blocks a second test for the same subject in the same term', () => {
+  const existing = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-01' };
+  engine.setScheduleState({ assessmentSchedule: [existing], closedWeeks: [] });
+  const candidate = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-04', correctionDate: '2026-11-05', remediationDate: '2026-11-06', examStartDate: '2026-11-15' };
+  assert.match(engine.validateScheduledTest(candidate), /فرض مسجل مسبقاً/);
+});
+
+test('schedule permits at most two tests per class per day', () => {
+  const existing = [
+    { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'العربية', testDate: '2026-11-01' },
+    { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-01' }
+  ];
+  engine.setScheduleState({ assessmentSchedule: existing, closedWeeks: [] });
+  const candidate = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'العلوم', testDate: '2026-11-01', correctionDate: '2026-11-02', remediationDate: '2026-11-03', examStartDate: '2026-11-15' };
+  assert.match(engine.validateScheduledTest(candidate), /فرضين في اليوم/);
+});
+
+test('schedule blocks tests inside the closed week', () => {
+  engine.setScheduleState({ assessmentSchedule: [], closedWeeks: [{ stage: 'middle', groupId: 'g1', startDate: '2026-11-01', endDate: '2026-11-07' }] });
+  const candidate = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'العلوم', testDate: '2026-11-04', correctionDate: '2026-11-05', remediationDate: '2026-11-06', examStartDate: '2026-11-20' };
+  assert.match(engine.validateScheduledTest(candidate), /الأسبوع المغلق/);
+});
+
+test('schedule requires correction and remediation seven days before exams', () => {
+  engine.setScheduleState({ assessmentSchedule: [], closedWeeks: [] });
+  const candidate = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'العلوم', testDate: '2026-11-01', correctionDate: '2026-11-09', remediationDate: '2026-11-10', examStartDate: '2026-11-15' };
+  assert.match(engine.validateScheduledTest(candidate), /بسبعة أيام/);
 });

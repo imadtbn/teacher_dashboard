@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
+const XLSX = require('xlsx');
 
 const root = process.cwd();
 const server = http.createServer((request, response) => {
@@ -28,7 +29,7 @@ const server = http.createServer((request, response) => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  await page.route('https://cdn.jsdelivr.net/**', route => route.abort());
+  await page.route('https://cdn.jsdelivr.net/npm/chart.js@4.4.1', route => route.abort());
   await page.addInitScript(() => { if (!sessionStorage.getItem('__teacher_test_reset')) { localStorage.clear(); sessionStorage.setItem('__teacher_test_reset', '1'); } });
 
   try {
@@ -70,8 +71,23 @@ const server = http.createServer((request, response) => {
     assert.equal(await importedRow.locator('input[data-field="cont"]').inputValue(), '8');
     assert.equal(await importedRow.locator('input[data-field="exam"]').inputValue(), '7');
 
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ['اللقب والاسم', 'التقييم المستمر', 'الاختبار'],
+      ['تلميذ من ملف Excel', 6, 9]
+    ]), 'القائمة');
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    await page.locator('#excelFileInput').setInputFiles({ name: 'roster.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: excelBuffer });
+    await page.locator('#importPreview').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#importPreview').innerText(), /تلميذ من ملف Excel/);
+    await page.locator('#btnConfirmImport').click();
+    assert.equal(await page.locator('#subjectTableBody input[data-field="name"]').count(), 3);
+    const excelRow = page.locator('#subjectTableBody tr').nth(2);
+    assert.equal(await excelRow.locator('input[data-field="cont"]').inputValue(), '6');
+    assert.equal(await excelRow.locator('input[data-field="exam"]').inputValue(), '9');
+
     await page.reload({ waitUntil: 'domcontentloaded' });
-    assert.equal(await page.locator('#subjectTableBody input[data-field="name"]').count(), 2, 'roster persists after reload');
+    assert.equal(await page.locator('#subjectTableBody input[data-field="name"]').count(), 3, 'roster persists after reload');
     assert.equal(await page.locator('#subjectTableBody img').count(), 0, 'stored names remain escaped after reload');
 
     await page.locator('#btnOpenSchedule').click();

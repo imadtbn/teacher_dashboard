@@ -20,7 +20,7 @@ jobs:
       - name: Run grade engine regression tests
         run: node --test tests/*.test.cjs
       - name: Install browser test dependencies
-        run: npm install --no-save playwright
+        run: npm install --no-save playwright xlsx
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run browser smoke tests

@@ -2006,7 +2006,12 @@
       const student = grp.students.find(s => s.id === target.getAttribute('data-id'));
       if (!student) return;
       const field = target.getAttribute('data-field');
-      if (field === 'name' || field === 'customRemark' || field === 'qualLevel') {
+      if (field === 'name') {
+        const normalized = normalizeStudentName(target.value);
+        const duplicate = normalized && grp.students.some(other => other.id !== student.id && normalizeStudentName(other.name) === normalized);
+        if (duplicate) { showToast('هذا الاسم موجود مسبقاً في كشف المادة.', '⚠️'); renderStageWorkspace(); return; }
+        student.name = target.value.trim().replace(/\\s+/g, ' ');
+      } else if (field === 'customRemark' || field === 'qualLevel') {
         student[field] = target.value;
       } else {
         const maxVal = stage === 'primary' ? 10 : ((field === 'exam' && Number(grp.examScale) === 40) ? 40 : 20);
@@ -2104,7 +2109,14 @@
         const st = hr.students.find(s => s.id === t.getAttribute('data-hr-student'));
         const field = t.getAttribute('data-hr-field');
         if (st) {
-          st[field] = field === 'name' ? t.value : clamp(t.value, 0, 20);
+          if (field === 'name') {
+            const normalized = normalizeStudentName(t.value);
+            const duplicate = normalized && hr.students.some(other => other.id !== st.id && normalizeStudentName(other.name) === normalized);
+            if (duplicate) { showToast('هذا الاسم موجود مسبقاً في كشف القسم.', '⚠️'); renderStageWorkspace(); return; }
+            st.name = t.value.trim().replace(/\\s+/g, ' ');
+          } else {
+            st[field] = clamp(t.value, 0, 20);
+          }
           saveState();
           renderStageWorkspace();
         }

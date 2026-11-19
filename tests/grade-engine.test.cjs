@@ -28,7 +28,7 @@ const declarations = [
   'this.engine = { computeStudentSubjectGrade, computeHomeroomStudent, parseCsvRows, googleSheetsCsvUrl, escapeHtml, migrateLegacyState, validateScheduledTest, setScheduleState(value) { state = value; } };'
 ].join('\n');
 
-const sandbox = {};
+const sandbox = { URL };
 vm.runInNewContext(declarations, sandbox);
 const engine = sandbox.engine;
 

@@ -29,7 +29,7 @@ const server = http.createServer((request, response) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await page.route('https://cdn.jsdelivr.net/**', route => route.abort());
-  await page.addInitScript(() => localStorage.clear());
+  await page.addInitScript(() => { if (!sessionStorage.getItem('__teacher_test_reset')) { localStorage.clear(); sessionStorage.setItem('__teacher_test_reset', '1'); } });
 
   try {
     await page.goto('http://127.0.0.1:4173/primary.html', { waitUntil: 'domcontentloaded' });

@@ -427,7 +427,14 @@
             <option value="homeroom">إضافة إلى قسم الأستاذ الرئيسي فقط</option>
           </select>
         </div>
-        <textarea id="importNamesTextarea" rows="7" placeholder="بن علي محمد&#10;بوزيد أمينة..." class="w-full rounded-xl border border-slate-300 p-3 text-xs sm:text-sm"></textarea>
+        <div class="space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+          <label for="googleSheetUrl" class="block text-xs font-bold text-slate-700">استيراد مباشر من Google Sheets</label>
+          <input id="googleSheetUrl" type="url" dir="ltr" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs" />
+          <button id="btnImportGoogleSheet" type="button" class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white">استيراد من Google Sheets</button>
+          <p class="text-[11px] leading-5 text-slate-600">يجب أن يكون الجدول متاحاً للعرض عبر الرابط أو منشوراً على الويب. يمكن استيراد الأسماء والعلامات عند وجود عناوين أعمدة واضحة.</p>
+        </div>
+        <p class="text-xs font-semibold text-slate-600">أو الصق قائمة أسماء أو جدولاً من Excel / Google Sheets (بما في ذلك الأعمدة والعلامات):</p>
+        <textarea id="importNamesTextarea" rows="7" placeholder="اللقب والاسم\tالتقييم المستمر\tالفرض\tالاختبار\nبن علي محمد\t14\t13\t15\nبوزيد أمينة\t16\t15\t17" class="w-full rounded-xl border border-slate-300 p-3 text-xs sm:text-sm"></textarea>
         <div class="flex items-center justify-end gap-2">
           <button id="btnCancelImport" type="button" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">إلغاء</button>
           <button id="btnConfirmImport" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">استيراد الأسماء الآن</button>

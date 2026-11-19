@@ -1,5 +1,6 @@
 (function () {
-  const STORAGE_KEY = 'dz_teacher_grade_dashboard_v3_multi';
+  const STORAGE_KEY = 'dz_teacher_grade_dashboard_v4_multi';
+  const LEGACY_STORAGE_KEY = 'dz_teacher_grade_dashboard_v3_multi';
 
   const STAGE_META = {
     primary: {
@@ -245,137 +246,45 @@
   };
 
   function getDefaultState() {
+    const makeHomeroom = (stage, preset) => ({
+      stage, preset, className: '', activeTerm: 1,
+      subjects: JSON.parse(JSON.stringify(HOMEROOM_SUBJECT_PRESETS[preset] || [])),
+      students: []
+    });
     return {
-      teacherName: 'الأستاذ(ة): بن سالم عبد القادر',
-      schoolName: 'مؤسسة التربية والتعليم - سيدي داود (بومرداس)',
-      schoolYear: '2026 / 2027',
-      currentPage: 'home', // 'home' | 'primary' | 'middle' | 'secondary' | 'rules'
-      stageSubTab: {
-        primary: 'subject',
-        middle: 'subject',
-        secondary: 'subject'
-      },
-      activeGroupByStage: {
-        primary: 'grp_pri_1',
-        middle: 'grp_mid_1',
-        secondary: 'grp_sec_1'
-      },
-      groups: [
-        // Primary Groups
-        {
-          id: 'grp_pri_1',
-          stage: 'primary',
-          groupName: '3 ابتدائي ف1',
-          yearLevel: 'p3',
-          category: 'pri_core',
-          subjectName: 'اللغة العربية',
-          coeff: 1,
-          examScale: 10,
-          term: 1,
-          students: [
-            { id: 'p1', name: 'بلقاسم ريان', cont: 8.5, devoir: 8.0, extra: 8.5, exam: 8.0, qualLevel: 'A', customRemark: '', rubric: { p1: 3.5, p2: 3.0, p3: 2.0 } },
-            { id: 'p2', name: 'شتوح سيرين', cont: 9.5, devoir: 9.0, extra: 9.0, exam: 9.0, qualLevel: 'A', customRemark: '', rubric: { p1: 3.5, p2: 3.5, p3: 2.5 } },
-            { id: 'p3', name: 'علاوي آدم', cont: 6.5, devoir: 6.0, extra: 6.5, exam: 6.0, qualLevel: 'B', customRemark: '', rubric: { p1: 2.5, p2: 2.0, p3: 2.0 } },
-            { id: 'p4', name: 'مقراني يسرى', cont: 7.5, devoir: 7.0, extra: 7.5, exam: 8.0, qualLevel: 'A', customRemark: '', rubric: { p1: 3.0, p2: 2.5, p3: 2.0 } }
-          ]
-        },
-        {
-          id: 'grp_pri_2',
-          stage: 'primary',
-          groupName: '1 ابتدائي ف1 (وصفي)',
-          yearLevel: 'p1',
-          category: 'pri_core',
-          subjectName: 'الرياضيات',
-          coeff: 1,
-          examScale: 10,
-          term: 1,
-          students: [
-            { id: 'p1_1', name: 'حميدي أنس', cont: 9.0, devoir: 9.0, extra: 9.0, exam: 9.0, qualLevel: 'A', customRemark: '' },
-            { id: 'p1_2', name: 'قندوز مرام', cont: 8.0, devoir: 8.0, extra: 8.0, exam: 8.0, qualLevel: 'B', customRemark: '' },
-            { id: 'p1_3', name: 'زروقي لقمان', cont: 6.0, devoir: 6.0, extra: 6.0, exam: 6.0, qualLevel: 'C', customRemark: '' }
-          ]
-        },
-        // Middle School Groups
-        {
-          id: 'grp_mid_1',
-          stage: 'middle',
-          groupName: '4 متوسط ف1',
-          yearLevel: 'm4',
-          category: 'mid_standard',
-          subjectName: 'الرياضيات',
-          coeff: 4,
-          examScale: 20,
-          term: 1,
-          students: [
-            { id: 'm1', name: 'مسعودي آدم', cont: 16.5, devoir: 15.0, extra: 15.0, exam: 16.0, qualLevel: 'A', customRemark: '', rubric: { m1: 6.0, m2: 5.5, m3: 5.0 } },
-            { id: 'm2', name: 'رحماني آية', cont: 18.5, devoir: 19.0, extra: 18.0, exam: 18.0, qualLevel: 'A', customRemark: '', rubric: { m1: 6.5, m2: 6.0, m3: 6.0 } },
-            { id: 'm3', name: 'مراد إسلام', cont: 11.5, devoir: 10.0, extra: 11.0, exam: 10.5, qualLevel: 'B', customRemark: '', rubric: { m1: 4.5, m2: 3.5, m3: 3.5 } },
-            { id: 'm4', name: 'حمزاوي ريان', cont: 9.5, devoir: 8.0, extra: 9.0, exam: 8.5, qualLevel: 'C', customRemark: '', rubric: { m1: 4.0, m2: 3.0, m3: 2.5 } },
-            { id: 'm5', name: 'بختي ملاك', cont: 14.5, devoir: 13.5, extra: 14.0, exam: 14.0, qualLevel: 'A', customRemark: '', rubric: { m1: 5.5, m2: 4.5, m3: 4.5 } }
-          ]
-        },
-        // Secondary School Groups
-        {
-          id: 'grp_sec_1',
-          stage: 'secondary',
-          groupName: '2 ثانوي علوم تجريبية ف1',
-          yearLevel: 's2',
-          category: 'practical',
-          subjectName: 'العلوم الفيزيائية',
-          coeff: 4,
-          examScale: 20,
-          term: 1,
-          students: [
-            { id: 's1', name: 'بن عيسى عبد الرحمان', cont: 16.5, devoir: 15.0, extra: 17.0, exam: 16.0, qualLevel: 'A', customRemark: '', rubric: { c1: 8.5, c2: 8.0, e1: 8.5, e2: 8.5 } },
-            { id: 's2', name: 'بوزيدي مريم', cont: 18.5, devoir: 17.5, extra: 19.0, exam: 18.0, qualLevel: 'A', customRemark: '', rubric: { c1: 9.5, c2: 9.0, e1: 9.5, e2: 9.5 } },
-            { id: 's3', name: 'خليفي ياسين', cont: 13.5, devoir: 11.5, extra: 14.0, exam: 12.5, qualLevel: 'B', customRemark: '', rubric: { c1: 7.0, c2: 6.5, e1: 7.0, e2: 7.0 } },
-            { id: 's4', name: 'قاسمي سارة', cont: 15.5, devoir: 14.0, extra: 16.0, exam: 14.5, qualLevel: 'A', customRemark: '', rubric: { c1: 8.0, c2: 7.5, e1: 8.0, e2: 8.0 } },
-            { id: 's5', name: 'تواتي أيمن', cont: 11.0, devoir: 9.0, extra: 11.5, exam: 9.5, qualLevel: 'C', customRemark: '', rubric: { c1: 6.0, c2: 5.0, e1: 6.0, e2: 5.5 } },
-            { id: 's6', name: 'سليماني لينا', cont: 17.5, devoir: 16.5, extra: 18.0, exam: 17.0, qualLevel: 'A', customRemark: '', rubric: { c1: 9.0, c2: 8.5, e1: 9.0, e2: 9.0 } }
-          ]
-        }
-      ],
+      teacherName: '', schoolName: '', schoolYear: '2026 / 2027',
+      currentPage: 'home',
+      stageSubTab: { primary: 'subject', middle: 'subject', secondary: 'subject' },
+      activeGroupByStage: { primary: '', middle: '', secondary: '' },
+      groups: [],
       homeroomByStage: {
-        primary: {
-          stage: 'primary',
-          preset: 'pri_y3',
-          className: 'السنة 3 ابتدائي - الفوج 1',
-          activeTerm: 1,
-          subjects: JSON.parse(JSON.stringify(HOMEROOM_SUBJECT_PRESETS.pri_y3)),
-          students: [
-            { id: 'hp1', name: 'بلقاسم ريان', grades: { arab: 8.5, math: 8.0, fr: 7.5, en: 8.0, isl: 9.0, hist: 8.0, sci: 8.5, civ: 9.0, art: 9.5 }, projectScore: 10, readingScore: 10, t2Avg: 8.4, t3Avg: 8.6 },
-            { id: 'hp2', name: 'شتوح سيرين', grades: { arab: 9.5, math: 9.0, fr: 9.0, en: 9.0, isl: 9.5, hist: 9.0, sci: 9.5, civ: 9.5, art: 9.5 }, projectScore: 10, readingScore: 10, t2Avg: 9.3, t3Avg: 9.5 },
-            { id: 'hp3', name: 'علاوي آدم', grades: { arab: 6.5, math: 6.0, fr: 5.5, en: 6.0, isl: 7.5, hist: 6.5, sci: 6.5, civ: 7.5, art: 8.5 }, projectScore: 10, readingScore: 10, t2Avg: 6.8, t3Avg: 7.1 }
-          ]
-        },
-        middle: {
-          stage: 'middle',
-          preset: 'mid_y4',
-          className: 'السنة 4 متوسط - القسم 1',
-          activeTerm: 1,
-          subjects: JSON.parse(JSON.stringify(HOMEROOM_SUBJECT_PRESETS.mid_y4)),
-          students: [
-            { id: 'hm1', name: 'مسعودي آدم', grades: { arab: 15.0, math: 16.0, fr: 14.0, en: 14.5, hist: 15.5, phys: 16.0, snv: 15.5, isl: 17.0, civ: 16.5, sport: 18.0 }, projectScore: 15, readingScore: 15, t2Avg: 15.6, t3Avg: 16.0 },
-            { id: 'hm2', name: 'رحماني آية', grades: { arab: 18.0, math: 18.5, fr: 17.5, en: 18.0, hist: 18.0, phys: 18.5, snv: 18.0, isl: 19.0, civ: 18.5, sport: 18.5 }, projectScore: 18, readingScore: 18, t2Avg: 18.3, t3Avg: 18.6 },
-            { id: 'hm3', name: 'مراد إسلام', grades: { arab: 11.5, math: 10.5, fr: 10.0, en: 11.0, hist: 12.0, phys: 11.0, snv: 11.5, isl: 13.5, civ: 13.0, sport: 16.0 }, projectScore: 12, readingScore: 12, t2Avg: 11.8, t3Avg: 12.2 },
-            { id: 'hm4', name: 'حمزاوي ريان', grades: { arab: 9.5, math: 8.5, fr: 8.0, en: 9.0, hist: 9.5, phys: 8.5, snv: 9.0, isl: 11.5, civ: 11.0, sport: 15.0 }, projectScore: 10, readingScore: 10, t2Avg: 9.8, t3Avg: 10.4 }
-          ]
-        },
-        secondary: {
-          stage: 'secondary',
-          preset: 'sec_sci',
-          className: '2 ثانوي علوم تجريبية 1',
-          activeTerm: 1,
-          subjects: JSON.parse(JSON.stringify(HOMEROOM_SUBJECT_PRESETS.sec_sci)),
-          students: [
-            { id: 'hs1', name: 'بن عيسى عبد الرحمان', grades: { math: 15.5, phys: 16.1, snv: 15.0, arab: 14.5, fr: 13.5, en: 14.0, hist: 15.0, isl: 16.5, info: 16.0, sport: 17.5 }, projectScore: 16.0, readingScore: 15.0, t2Avg: 15.85, t3Avg: 16.20 },
-            { id: 'hs2', name: 'بوزيدي مريم', grades: { math: 18.0, phys: 18.2, snv: 17.5, arab: 17.0, fr: 16.5, en: 17.5, hist: 17.0, isl: 18.5, info: 18.0, sport: 18.0 }, projectScore: 18.5, readingScore: 18.0, t2Avg: 18.10, t3Avg: 18.35 },
-            { id: 'hs3', name: 'خليفي ياسين', grades: { math: 11.5, phys: 12.8, snv: 12.0, arab: 13.0, fr: 11.0, en: 11.5, hist: 13.5, isl: 14.0, info: 13.5, sport: 16.0 }, projectScore: 14.0, readingScore: 13.0, t2Avg: 12.90, t3Avg: 13.25 },
-            { id: 'hs4', name: 'قاسمي سارة', grades: { math: 14.0, phys: 14.9, snv: 14.5, arab: 15.0, fr: 14.5, en: 15.0, hist: 14.0, isl: 16.0, info: 15.5, sport: 17.0 }, projectScore: 16.5, readingScore: 16.0, t2Avg: 15.20, t3Avg: 15.45 }
-          ]
-        }
+        primary: makeHomeroom('primary', 'pri_y3'),
+        middle: makeHomeroom('middle', 'mid_y4'),
+        secondary: makeHomeroom('secondary', 'sec_sci')
       }
     };
+  }
+
+  function migrateLegacyState(parsed) {
+    if (!parsed || !Array.isArray(parsed.groups) || !parsed.homeroomByStage) return null;
+    const demoSubjectStudentIds = new Set(['p1','p2','p3','p4','p1_1','p1_2','p1_3','m1','m2','m3','m4','m5','s1','s2','s3','s4','s5','s6']);
+    const demoHomeroomStudentIds = new Set(['hp1','hp2','hp3','hm1','hm2','hm3','hm4','hs1','hs2','hs3','hs4']);
+    parsed.groups = parsed.groups.filter(Boolean).map(group => ({
+      ...group,
+      students: (Array.isArray(group.students) ? group.students : []).filter(student => student && !demoSubjectStudentIds.has(String(student.id)))
+    })).filter(group => group.students.length > 0 || (!/^grp_(pri|mid|sec)_1$/.test(String(group.id || '')) && group.id !== 'grp_pri_2'));
+    Object.values(parsed.homeroomByStage).forEach(hr => {
+      if (!hr) return;
+      hr.students = (Array.isArray(hr.students) ? hr.students : []).filter(student => student && !demoHomeroomStudentIds.has(String(student.id)));
+      if (/^(السنة 3 ابتدائي - الفوج 1|السنة 4 متوسط - القسم 1|2 ثانوي علوم تجريبية 1)$/.test(hr.className || '')) hr.className = '';
+    });
+    if (parsed.teacherName === 'الأستاذ(ة): بن سالم عبد القادر') parsed.teacherName = '';
+    if (parsed.schoolName === 'مؤسسة التربية والتعليم - سيدي داود (بومرداس)') parsed.schoolName = '';
+    parsed.activeGroupByStage = parsed.activeGroupByStage || { primary: '', middle: '', secondary: '' };
+    Object.keys(parsed.activeGroupByStage).forEach(stage => {
+      if (!parsed.groups.some(group => group.stage === stage && group.id === parsed.activeGroupByStage[stage])) parsed.activeGroupByStage[stage] = '';
+    });
+    return parsed;
   }
 
   let state = loadState();
@@ -385,14 +294,22 @@
 
   function loadState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.groups) && parsed.homeroomByStage) {
-          return parsed;
+      const currentRaw = localStorage.getItem(STORAGE_KEY);
+      if (currentRaw) {
+        const current = JSON.parse(currentRaw);
+        if (current && Array.isArray(current.groups) && current.homeroomByStage) return current;
+      }
+      const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacyRaw) {
+        const migrated = migrateLegacyState(JSON.parse(legacyRaw));
+        if (migrated) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          return migrated;
         }
       }
-    } catch (e) {}
+    } catch (error) {
+      console.error('تعذر تحميل بيانات لوحة الأستاذ:', error);
+    }
     return getDefaultState();
   }
 
@@ -441,6 +358,160 @@
 
   function getStageHomeroom(stage) {
     return state.homeroomByStage[stage] || state.homeroomByStage.secondary;
+  }
+  function normalizeStudentName(value) {
+    return String(value || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar');
+  }
+
+  function createStudentId(prefix) {
+    return (window.crypto && window.crypto.randomUUID)
+      ? window.crypto.randomUUID()
+      : prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+  }
+
+  function normalizeImportHeader(value) {
+    return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('ar').replace(/[\s_\-./()]+/g, '');
+  }
+
+  function parseCsvRows(text) {
+    const rows = [];
+    let row = [], cell = '', quoted = false;
+    const source = String(text || '').replace(/^\uFEFF/, '');
+    const firstLine = source.split(/\r?\n/).find(line => line.trim()) || '';
+    const delimiterCounts = ['\t', ';', ','].map(delimiter => {
+      let count = 0, inQuotes = false;
+      for (let i = 0; i < firstLine.length; i++) {
+        if (firstLine[i] === '"') inQuotes = !inQuotes;
+        else if (firstLine[i] === delimiter && !inQuotes) count++;
+      }
+      return count;
+    });
+    const delimiter = delimiterCounts[0] > 0 ? '\t' : delimiterCounts[1] > 0 ? ';' : ',';
+    for (let i = 0; i < source.length; i++) {
+      const ch = source[i];
+      if (ch === '"' && quoted && source[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = !quoted;
+      else if (ch === delimiter && !quoted) { row.push(cell.trim()); cell = ''; }
+      else if ((ch === '\n' || ch === '\r') && !quoted) {
+        if (ch === '\r' && source[i + 1] === '\n') i++;
+        row.push(cell.trim());
+        if (row.some(value => value !== '')) rows.push(row);
+        row = []; cell = '';
+      } else cell += ch;
+    }
+    row.push(cell.trim());
+    if (row.some(value => value !== '')) rows.push(row);
+    return rows;
+  }
+
+  function importHeaderIndex(headers, aliases) {
+    const normalized = headers.map(normalizeImportHeader);
+    return normalized.findIndex(value => aliases.some(alias => value === normalizeImportHeader(alias) || value.includes(normalizeImportHeader(alias))));
+  }
+
+  function importNumber(row, headers, aliases, min, max) {
+    const index = importHeaderIndex(headers, aliases);
+    if (index < 0 || row[index] === undefined || String(row[index]).trim() === '') return null;
+    const value = Number(String(row[index]).replace(',', '.'));
+    return Number.isFinite(value) ? clamp(value, min, max) : null;
+  }
+
+  function importRosterRows(inputRows, target) {
+    const stage = getActiveStage();
+    const group = getCurrentStageGroup(stage);
+    const homeroom = getStageHomeroom(stage);
+    const rows = (inputRows || []).filter(row => Array.isArray(row) && row.some(cell => String(cell || '').trim()));
+    if (!rows.length) return { added: 0, skipped: 0, updated: 0 };
+
+    const nameAliases = ['الاسم واللقب','اللقب والاسم','اسم التلميذ','اسم الطالب','التلميذ','الاسم الكامل','الاسم','nom et prenom','nom complet','student name','name'];
+    let headerIndex = rows.findIndex(row => row.some(cell => nameAliases.some(alias => normalizeImportHeader(cell).includes(normalizeImportHeader(alias)))));
+    const hasHeader = headerIndex >= 0;
+    const headers = hasHeader ? rows[headerIndex].map(String) : [];
+    const dataRows = hasHeader ? rows.slice(headerIndex + 1) : rows;
+    const surnameIndex = hasHeader ? importHeaderIndex(headers, ['اللقب','النسب','nom','surname','last name']) : -1;
+    const firstNameIndex = hasHeader ? importHeaderIndex(headers, ['الاسم','prénom','prenom','first name']) : -1;
+    const nameIndex = hasHeader ? importHeaderIndex(headers, nameAliases) : 0;
+
+    const existingSubject = new Set((group?.students || []).map(student => normalizeStudentName(student.name)));
+    const existingHomeroom = new Set(homeroom.students.map(student => normalizeStudentName(student.name)));
+    let added = 0, skipped = 0, updated = 0;
+
+    dataRows.forEach(row => {
+      const cells = row.map(value => String(value == null ? '' : value).trim());
+      let name = '';
+      if (hasHeader && surnameIndex >= 0 && firstNameIndex >= 0 && surnameIndex !== firstNameIndex) {
+        name = [cells[surnameIndex], cells[firstNameIndex]].filter(Boolean).join(' ');
+      } else if (hasHeader && nameIndex >= 0) {
+        name = cells[nameIndex] || '';
+      } else {
+        const textCells = cells.filter(value => value.length >= 2 && !/^[0-9.,/-]+$/.test(value));
+        name = textCells.length ? textCells.slice(0, 2).join(' ') : '';
+      }
+      name = name.trim().replace(/\s+/g, ' ');
+      if (!name) return;
+
+      const key = normalizeStudentName(name);
+      const wantsSubject = target === 'subject' || target === 'both';
+      const wantsHomeroom = target === 'homeroom' || target === 'both';
+      if (wantsSubject && !group) { skipped++; return; }
+      if ((wantsSubject && existingSubject.has(key)) || (wantsHomeroom && existingHomeroom.has(key))) { skipped++; return; }
+
+      const studentKey = createStudentId('student');
+      if (wantsSubject) {
+        const student = { id: createStudentId('st'), studentKey, name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: 'A', customRemark: '', rubric: {} };
+        if (hasHeader) {
+          const max = stage === 'primary' ? 10 : 20;
+          const cont = importNumber(cells, headers, ['التقييم المستمر','تقييم النشاطات','النشاطات','المستمر','continuous','cont'], 0, max);
+          const devoir = importNumber(cells, headers, ['الفرض','علامة الفرض','devoir','assignment'], 0, 20);
+          const extra = importNumber(cells, headers, ['التعبير الشفوي','الأعمال التطبيقية','الشفوي','التطبيقي','oral','practical','extra'], 0, 20);
+          const examMax = stage === 'primary' ? 10 : Number(group.examScale) === 20 ? 20 : 40;
+          const exam = importNumber(cells, headers, ['الاختبار','علامة الاختبار','exam'], 0, examMax);
+          if (cont !== null) student.cont = cont;
+          if (devoir !== null) student.devoir = devoir;
+          if (extra !== null) student.extra = extra;
+          if (exam !== null) student.exam = exam;
+        }
+        group.students.push(student);
+        existingSubject.add(key);
+        added++;
+      }
+      if (wantsHomeroom) {
+        const linked = wantsSubject ? group.students.find(student => student.studentKey === studentKey) : null;
+        const grades = {};
+        homeroom.subjects.forEach(subject => {
+          let grade = hasHeader ? importNumber(cells, headers, [subject.name, subject.id], 0, stage === 'primary' ? 10 : 20) : null;
+          grades[subject.id] = grade === null ? 0 : grade;
+        });
+        const student = { id: createStudentId('hr'), studentKey: linked?.studentKey || studentKey, name, grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0 };
+        if (hasHeader) {
+          const project = importNumber(cells, headers, ['المشاريع الدراسية','المشروع','project'], 0, 20);
+          const reading = importNumber(cells, headers, ['المطالعة','القراءة','reading'], 0, 20);
+          const t2 = importNumber(cells, headers, ['معدل الفصل الثاني','الفصل الثاني','t2avg'], 0, stage === 'primary' ? 10 : 20);
+          const t3 = importNumber(cells, headers, ['معدل الفصل الثالث','الفصل الثالث','t3avg'], 0, stage === 'primary' ? 10 : 20);
+          if (project !== null) student.projectScore = project;
+          if (reading !== null) student.readingScore = reading;
+          if (t2 !== null) student.t2Avg = t2;
+          if (t3 !== null) student.t3Avg = t3;
+        }
+        homeroom.students.push(student);
+        existingHomeroom.add(key);
+        if (!wantsSubject) added++;
+      }
+    });
+    return { added, skipped, updated };
+  }
+
+  function googleSheetsCsvUrl(value) {
+    const url = new URL(String(value || '').trim());
+    if (!['docs.google.com', 'drive.google.com'].includes(url.hostname)) throw new Error('أدخل رابط Google Sheets صالحاً');
+    if (url.pathname.includes('/spreadsheets/d/e/') && url.pathname.includes('/pub')) {
+      url.searchParams.set('output', 'csv');
+      return url.toString();
+    }
+    const match = url.pathname.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (!match) throw new Error('الرابط لا يشير إلى جدول بيانات Google Sheets');
+    const gid = url.searchParams.get('gid') || (url.hash.match(/gid=(\d+)/) || [])[1] || '0';
+    return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&gid=${gid}`;
   }
 
   function isPrimaryQualitativeOnly(group) {
@@ -509,7 +580,7 @@
     const coeff = Math.max(1, parseInt(group.coeff, 10) || 1);
     const weighted = avg * coeff;
     const autoRemark = qualOnly
-      ? `${qualInfo.label} ${group.yearLevel === 'p1' ? '— انتقال آلي للسنة 2 ابتدائي' : '— تقييم وصفي نوعي (ف1)'}`
+      ? `${qualInfo.label} ${group.yearLevel === 'p1' ? '— تقييم وصفي نوعي، والانتقال مشروط بالمواظبة المنتظمة' : '— تقييم وصفي نوعي (ف1)'}`
       : generatePedagogicalRemark(avg, maxBase, isPrimary ? examOn10 : examOn20);
 
     return {
@@ -542,8 +613,7 @@
     homeroom.subjects.forEach(sub => {
       if (isPrimary && Number(homeroom.activeTerm) === 1 && sub.qualInT1) return;
       const c = Math.max(1, parseInt(sub.coeff, 10) || 1);
-      const defaultGrade = isPrimary ? 6 : 10;
-      const g = clamp(student.grades[sub.id] !== undefined ? student.grades[sub.id] : defaultGrade, 0, scaleMax);
+      const g = clamp(student.grades && student.grades[sub.id] !== undefined ? student.grades[sub.id] : 0, 0, scaleMax);
       sumWeightedSubjects += g * c;
       sumCoeffs += c;
     });
@@ -560,14 +630,17 @@
     const t3 = clamp(student.t3Avg !== undefined ? student.t3Avg : termAvg, 0, scaleMax);
     const annualAvg = (termAvg + t2 + t3) / 3;
 
+    const autoPassEligible = isPriY1 && student.attendanceRegular === true;
     const award = isPriY1
-      ? { label: 'انتقال آلي (سنة 1)', cls: 'bg-sky-100 text-sky-900 border-sky-300' }
+      ? (autoPassEligible
+        ? { label: 'انتقال آلي — مواظب', cls: 'bg-sky-100 text-sky-900 border-sky-300' }
+        : { label: 'المواظبة غير مؤكدة', cls: 'bg-amber-100 text-amber-900 border-amber-300' })
       : getCouncilAward(termAvg, scaleMax);
 
     return {
       isPrimary, isPriY1, scaleMax, sumWeightedSubjects, sumCoeffs,
       projectScore, readingScore, bonusProject, bonusReading, totalBonus,
-      finalWeightedSum, termAvg, t2, t3, annualAvg, award
+      finalWeightedSum, termAvg, t2, t3, annualAvg, autoPassEligible, award
     };
   }
 
@@ -919,7 +992,7 @@
               </td>
             ` : ''}
             <td class="p-2.5 text-center text-sm ${avgColor} num-cell">${c.avg.toFixed(2)}</td>
-            <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
+            <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${isPriY1 ? '—' : rankMap[st.id]}</td>
             <td class="p-2.5">
               <input type="text" value="${c.remark}" data-field="customRemark" data-id="${st.id}"
                 class="sub-student-input w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1" />
@@ -1040,10 +1113,10 @@
     const count = computedList.length;
     const avgTerm = count > 0 ? computedList.reduce((a, b) => a + b.calc.termAvg, 0) / count : 0;
     const avgAnnual = count > 0 ? computedList.reduce((a, b) => a + b.calc.annualAvg, 0) / count : 0;
-    const passCount = isPriY1 ? count : computedList.filter(i => i.calc.termAvg >= meta.passMark).length;
+    const passCount = isPriY1 ? computedList.filter(i => i.calc.autoPassEligible).length : computedList.filter(i => i.calc.termAvg >= meta.passMark).length;
     const passRate = count > 0 ? Math.round((passCount / count) * 100) : 0;
     const avgBonus = count > 0 ? computedList.reduce((a, b) => a + b.calc.totalBonus, 0) / count : 0;
-    const honorCount = computedList.filter(i => (scaleMax === 10 ? i.calc.termAvg >= 6 : i.calc.termAvg >= 12)).length;
+    const honorCount = isPriY1 ? 0 : computedList.filter(i => (scaleMax === 10 ? i.calc.termAvg >= 6 : i.calc.termAvg >= 12)).length;
 
     document.getElementById('kpiHomeCount').textContent = String(count);
     document.getElementById('kpiHomeTermAvg').textContent = isPriY1 ? 'وصفي' : avgTerm.toFixed(2);
@@ -1101,7 +1174,7 @@
       const subInputsHtml = hr.subjects.map(sub => {
         const isQualT1 = (isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
         if (isQualT1 || isPriY1) {
-          return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">تحكم مقبول</span></td>`;
+          return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">تقييم وصفي نوعي</span></td>`;
         }
         const defaultVal = isPrimary ? 7 : 12;
         const val = st.grades[sub.id] !== undefined ? st.grades[sub.id] : defaultVal;
@@ -1137,22 +1210,23 @@
           <td class="p-2 border-l border-slate-100">
             <input type="text" value="${st.name}" data-hr-student="${st.id}" data-hr-field="name"
               class="hr-meta-input w-full bg-transparent font-bold text-slate-800 px-1 py-0.5 rounded" />
+            ${isPriY1 ? `<label class="mt-1 flex items-center gap-1 text-[10px] font-semibold text-sky-800"><input type="checkbox" class="hr-attendance-input" data-hr-student="${st.id}" ${st.attendanceRegular === true ? 'checked' : ''} /> مواظب بانتظام (شرط الانتقال)</label>` : ''}
           </td>
           ${subInputsHtml}
           ${secCellsHtml}
           <td class="p-2 text-center font-bold text-purple-900 bg-purple-50/40 num-cell">${isPriY1 ? '-' : c.finalWeightedSum.toFixed(2)}</td>
           <td class="p-2 text-center text-sm ${termAvgCls} num-cell">${isPriY1 ? 'وصفي' : c.termAvg.toFixed(2)}</td>
           <td class="p-1.5 text-center bg-slate-50/60">
-            <input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t2Avg}"
+            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t2Avg}"
               data-hr-student="${st.id}" data-hr-field="t2Avg"
-              class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />
+              class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
           <td class="p-1.5 text-center bg-slate-50/60">
-            <input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t3Avg}"
+            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t3Avg}"
               data-hr-student="${st.id}" data-hr-field="t3Avg"
-              class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />
+              class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
-          <td class="p-2 text-center text-sm ${annualAvgCls} num-cell">${isPriY1 ? 'ينتقل آلياً' : c.annualAvg.toFixed(2)}</td>
+          <td class="p-2 text-center text-sm ${annualAvgCls} num-cell">${isPriY1 ? (c.autoPassEligible ? 'ينتقل آلياً' : 'غير مؤهل بعد') : c.annualAvg.toFixed(2)}</td>
           <td class="p-2 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
           <td class="p-2 text-center">
             <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${c.award.cls}">${c.award.label}</span>
@@ -1556,60 +1630,19 @@
   function handleExcelFileUpload(file) {
     if (!file || typeof XLSX === 'undefined') return;
     const reader = new FileReader();
-    reader.onload = function (e) {
+    reader.onload = function (event) {
       try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
-
-        const importedNames = [];
-        rows.forEach((row) => {
-          if (!Array.isArray(row) || row.length === 0) return;
-          const candidate = row.map(c => String(c).trim()).find(val => {
-            if (!val || val.length < 3) return false;
-            if (/^[0-9.,/-]+$/.test(val)) return false;
-            const headerWords = ['الرقم', 'اللقب', 'الاسم', 'الإسم', 'تاريخ', 'ملاحظة', 'المعدل', 'وزارة', 'الجمهورية', 'القسم', 'الفوج'];
-            if (headerWords.some(h => val.includes(h))) return false;
-            return true;
-          });
-          if (candidate) importedNames.push(candidate);
-        });
-
-        if (importedNames.length === 0) {
-          showToast('لم يتم العثور على أسماء صالحة في ملف Excel المرفوع', '⚠️');
-          return;
-        }
-
-        const stage = getActiveStage();
-        const grp = getCurrentStageGroup(stage);
-        const hr = getStageHomeroom(stage);
-        const defVal = stage === 'primary' ? 7 : 13;
-
-        importedNames.forEach((name, idx) => {
-          if (grp) {
-            grp.students.push({
-              id: 'xl_s_' + Date.now() + '_' + idx,
-              name, cont: defVal, devoir: defVal - 1, extra: defVal,
-              exam: stage === 'primary' ? 7 : (grp.examScale === 20 ? 12 : 24),
-              qualLevel: 'A', customRemark: '', rubric: {}
-            });
-          }
-          if (hr) {
-            const grades = {};
-            hr.subjects.forEach(s => { grades[s.id] = defVal; });
-            hr.students.push({
-              id: 'xl_h_' + Date.now() + '_' + idx,
-              name, grades, projectScore: 14, readingScore: 14, t2Avg: defVal, t3Avg: defVal
-            });
-          }
-        });
-
+        const workbook = XLSX.read(new Uint8Array(event.target.result), { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        const target = document.getElementById('importTargetSelect')?.value || 'subject';
+        const result = importRosterRows(rows, target);
         saveState();
         renderStageWorkspace();
-        showToast(`تم استيراد ${importedNames.length} تلميذاً من ملف Excel بنجاح!`);
-      } catch (err) {
-        showToast('تعذر قراءة ملف Excel المرفوع', '⚠️');
+        showToast(`استيراد Excel: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+      } catch (error) {
+        console.error('Excel import failed:', error);
+        showToast('تعذر قراءة ملف Excel أو مطابقة أعمدته', '⚠️');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -1756,12 +1789,13 @@
     document.getElementById('btnExportExcel')?.addEventListener('click', exportToExcelFile);
     document.getElementById('btnPrintCurrent')?.addEventListener('click', () => window.print());
     document.getElementById('btnResetDemo')?.addEventListener('click', () => {
+      if (!window.confirm('سيتم مسح بيانات الأستاذ الحالية من هذا المتصفح وإعادة تهيئة لوحة فارغة. هل أنشأت نسخة احتياطية؟')) return;
       state = getDefaultState();
       saveState();
       const fixedStage = document.body.getAttribute('data-fixed-stage');
       if (fixedStage) renderStageWorkspace();
       else window.navigateAppPage(state.currentPage || 'home');
-      showToast('تمت استعادة البيانات النموذجية بنجاح', '🔄');
+      showToast('تمت إعادة تهيئة لوحة فارغة بنجاح', '🔄');
     });
 
     // Subject Mode Controls
@@ -1805,12 +1839,9 @@
     document.getElementById('btnAddStudentSubject')?.addEventListener('click', () => {
       const stage = getActiveStage();
       const grp = getCurrentStageGroup(stage);
-      const defVal = stage === 'primary' ? 7 : 12;
       grp.students.push({
-        id: 'st_' + Date.now(),
-        name: `تلميذ جديد ${grp.students.length + 1}`,
-        cont: defVal, devoir: defVal - 1, extra: defVal,
-        exam: stage === 'primary' ? 7 : (grp.examScale === 20 ? 12 : 24),
+        id: createStudentId('st'), studentKey: createStudentId('student'),
+        name: '', cont: 0, devoir: 0, extra: 0, exam: 0,
         qualLevel: 'A', customRemark: '', rubric: {}
       });
       saveState();
@@ -1827,16 +1858,19 @@
         hr.subjects.push(targetSub);
       }
       grp.students.forEach(st => {
+        if (!String(st.name || '').trim()) return;
         const calc = computeStudentSubjectGrade(st, grp);
-        let hrStudent = hr.students.find(h => h.name.trim() === st.name.trim());
+        let hrStudent = hr.students.find(h => (st.studentKey && h.studentKey === st.studentKey) || h.name.trim() === st.name.trim());
         if (!hrStudent) {
           hrStudent = {
-            id: 'hrs_' + Date.now() + Math.random().toString(36).slice(2, 5),
-            name: st.name, grades: {}, projectScore: 14, readingScore: 14,
-            t2Avg: Number(calc.avg.toFixed(2)), t3Avg: Number(calc.avg.toFixed(2))
+            id: createStudentId('hr'), studentKey: st.studentKey || createStudentId('student'),
+            name: st.name, grades: {}, projectScore: 0, readingScore: 0,
+            t2Avg: 0, t3Avg: 0, attendanceRegular: false
           };
           hr.students.push(hrStudent);
         }
+        if (!hrStudent.studentKey) hrStudent.studentKey = st.studentKey || createStudentId('student');
+        if (!st.studentKey) st.studentKey = hrStudent.studentKey;
         hrStudent.grades[targetSub.id] = Number(calc.avg.toFixed(2));
       });
       saveState();
@@ -1925,13 +1959,11 @@
     document.getElementById('btnAddHomeroomStudent')?.addEventListener('click', () => {
       const stage = getActiveStage();
       const hr = getStageHomeroom(stage);
-      const defGrade = stage === 'primary' ? 7 : 12;
       const grades = {};
-      hr.subjects.forEach(s => { grades[s.id] = defGrade; });
+      hr.subjects.forEach(subject => { grades[subject.id] = 0; });
       hr.students.push({
-        id: 'hrs_' + Date.now(),
-        name: `تلميذ جديد ${hr.students.length + 1}`,
-        grades, projectScore: 14, readingScore: 14, t2Avg: defGrade, t3Avg: defGrade
+        id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'hrs_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        name: '', grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0, attendanceRegular: false
       });
       saveState();
       renderStageWorkspace();
@@ -1949,7 +1981,10 @@
       const stage = getActiveStage();
       const hr = getStageHomeroom(stage);
       const scaleMax = stage === 'primary' ? 10 : 20;
-      if (t.classList.contains('hr-grade-input')) {
+      if (t.classList.contains('hr-attendance-input')) {
+        const st = hr.students.find(student => student.id === t.getAttribute('data-hr-student'));
+        if (st) { st.attendanceRegular = t.checked; saveState(); renderStageWorkspace(); }
+      } else if (t.classList.contains('hr-grade-input')) {
         const st = hr.students.find(s => s.id === t.getAttribute('data-hr-student'));
         if (st) {
           st.grades[t.getAttribute('data-hr-sub')] = clamp(t.value, 0, scaleMax);
@@ -2001,36 +2036,37 @@
     document.getElementById('btnCancelImport')?.addEventListener('click', closeImport);
     document.getElementById('btnConfirmImport')?.addEventListener('click', () => {
       const raw = document.getElementById('importNamesTextarea').value;
-      const names = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-      if (names.length === 0) return;
+      const rows = parseCsvRows(raw);
+      if (!rows.length) return;
       const target = document.getElementById('importTargetSelect').value;
-      const stage = getActiveStage();
-      const grp = getCurrentStageGroup(stage);
-      const hr = getStageHomeroom(stage);
-      const defVal = stage === 'primary' ? 7 : 13;
-      if ((target === 'subject' || target === 'both') && grp) {
-        names.forEach((n, idx) => {
-          grp.students.push({
-            id: 'imp_s_' + Date.now() + '_' + idx,
-            name: n, cont: defVal, devoir: defVal - 1, extra: defVal, exam: defVal, qualLevel: 'A', customRemark: '', rubric: {}
-          });
-        });
-      }
-      if ((target === 'homeroom' || target === 'both') && hr) {
-        names.forEach((n, idx) => {
-          const grades = {};
-          hr.subjects.forEach(s => { grades[s.id] = defVal; });
-          hr.students.push({
-            id: 'imp_h_' + Date.now() + '_' + idx,
-            name: n, grades, projectScore: 14, readingScore: 14, t2Avg: defVal, t3Avg: defVal
-          });
-        });
-      }
+      const result = importRosterRows(rows, target);
       document.getElementById('importNamesTextarea').value = '';
       saveState();
       closeImport();
       renderStageWorkspace();
-      showToast(`تم استيراد ${names.length} تلميذاً بنجاح`);
+      showToast(`استيراد مكتمل: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+    });
+
+    document.getElementById('btnImportGoogleSheet')?.addEventListener('click', async () => {
+      const input = document.getElementById('googleSheetUrl');
+      const button = document.getElementById('btnImportGoogleSheet');
+      try {
+        const csvUrl = googleSheetsCsvUrl(input?.value);
+        button.disabled = true;
+        button.textContent = 'جارٍ جلب الجدول...';
+        const response = await fetch(csvUrl, { mode: 'cors', credentials: 'omit' });
+        if (!response.ok) throw new Error('تعذر الوصول إلى الجدول. تحقق من نشره أو صلاحية العرض عبر الرابط');
+        const rows = parseCsvRows(await response.text());
+        const target = document.getElementById('importTargetSelect').value;
+        const result = importRosterRows(rows, target);
+        saveState();
+        renderStageWorkspace();
+        showToast(`استيراد Google Sheets: ${result.added} تلميذاً، ${result.skipped} مكرر/متجاوز`);
+      } catch (error) {
+        showToast(error.message || 'تعذر استيراد Google Sheets؛ تحقق من صلاحية المشاركة', '⚠️');
+      } finally {
+        if (button) { button.disabled = false; button.textContent = 'استيراد من Google Sheets'; }
+      }
     });
 
     // New Group Modal

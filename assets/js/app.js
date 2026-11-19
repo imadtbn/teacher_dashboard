@@ -367,6 +367,12 @@
     return String(value || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar');
   }
 
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[character]));
+  }
+
   function createStudentId(prefix) {
     return (window.crypto && window.crypto.randomUUID)
       ? window.crypto.randomUUID()
@@ -558,7 +564,7 @@
     if (candidate.testDate >= candidate.examStartDate) return 'يجب أن يسبق الفرض تاريخ انطلاق الاختبارات الفصلية.';
     const deadline = new Date(candidate.examStartDate + 'T00:00:00');
     deadline.setDate(deadline.getDate() - 7);
-    const latestAllowed = deadline.toISOString().slice(0, 10);
+    const latestAllowed = [deadline.getFullYear(), String(deadline.getMonth() + 1).padStart(2, '0'), String(deadline.getDate()).padStart(2, '0')].join('-');
     if (candidate.correctionDate > latestAllowed || candidate.remediationDate > latestAllowed) return 'يجب إنهاء التصحيح والمعالجة قبل الاختبارات بسبعة أيام على الأقل.';
     if (candidate.correctionDate < candidate.testDate || candidate.remediationDate < candidate.correctionDate) return 'تحقق من ترتيب تواريخ الفرض والتصحيح والمعالجة.';
     return '';

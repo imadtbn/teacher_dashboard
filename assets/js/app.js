@@ -2270,6 +2270,10 @@
         return;
       }
       const target = document.getElementById('importTargetSelect').value;
+      if ((target === 'subject' || target === 'both') && !getCurrentStageGroup(getActiveStage())) {
+        showToast('أنشئ فوج المادة أولاً، أو اختر «قسم الأستاذ الرئيسي فقط» كوجهة للاستيراد.', '⚠️');
+        return;
+      }
       const result = importRosterRows(pendingImportRows, target);
       document.getElementById('importNamesTextarea').value = '';
       saveState();

@@ -873,7 +873,7 @@
     const termNames = { 1: 'الفصل الأول', 2: 'الفصل الثاني', 3: 'الفصل الثالث' };
     const tblTitle = document.getElementById('subjectTableTitle');
     if (tblTitle) {
-      tblTitle.textContent = `كشف نقاط مادة ${group.subjectName} — الفوج: ${group.groupName} (${termNames[group.term || 1]}) — المعامل: ${group.coeff}`;
+      tblTitle.textContent = `كشف نقاط مادة ${group.subjectName} — الفوج: ${group.groupName} (${termNames[group.term || 1]}) — المعامل: ${escapeHtml(group.coeff)}`;
     }
 
     const computedList = group.students.map(st => ({
@@ -1188,7 +1188,7 @@
       const isQualT1 = (isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
       return `<th class="p-2 text-center min-w-[78px] border-l border-slate-200 ${isQualT1 ? 'bg-sky-50 text-sky-900' : ''}">
         <div class="truncate max-w-[95px]" title="${escapeHtml(sub.name)}">${escapeHtml(sub.name)}</div>
-        <div class="text-[10px] ${isQualT1 ? 'text-sky-700' : 'text-teal-700'} font-bold">${isQualT1 ? 'وصفي (ف1)' : `معامل ${sub.coeff}`}</div>
+        <div class="text-[10px] ${isQualT1 ? 'text-sky-700' : 'text-teal-700'} font-bold">${isQualT1 ? 'وصفي (ف1)' : `معامل ${escapeHtml(sub.coeff)}`}</div>
       </th>`;
     }).join('');
 
@@ -2240,7 +2240,7 @@
         <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
           <input type="text" value="${escapeHtml(sub.name)}" data-cfg-idx="${i}" data-cfg-field="name"
             class="cfg-sub-input flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold" />
-          <input type="number" min="1" max="10" value="${sub.coeff}" data-cfg-idx="${i}" data-cfg-field="coeff"
+          <input type="number" min="1" max="10" value="${escapeHtml(sub.coeff)}" data-cfg-idx="${i}" data-cfg-field="coeff"
             class="cfg-sub-input num-input w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold" />
           <button type="button" data-cfg-del="${i}" class="btn-cfg-del-sub px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold">✕</button>
         </div>

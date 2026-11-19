@@ -2079,8 +2079,10 @@
       const grades = {};
       hr.subjects.forEach(subject => { grades[subject.id] = 0; });
       hr.students.push({
-        id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'hrs_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        name: '', grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0, attendanceRegular: false
+        id: createStudentId('hr'), studentKey: createStudentId('student'),
+        name: '', grades, projectScore: 0, readingScore: 0,
+        examMarks: {}, devoirMarks: {}, qualitativeLevels: {},
+        t2Avg: 0, t3Avg: 0, attendanceRegular: false
       });
       saveState();
       renderStageWorkspace();

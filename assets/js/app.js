@@ -992,7 +992,7 @@
               </td>
             ` : ''}
             <td class="p-2.5 text-center text-sm ${avgColor} num-cell">${c.avg.toFixed(2)}</td>
-            <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
+            <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${isPriY1 ? '—' : rankMap[st.id]}</td>
             <td class="p-2.5">
               <input type="text" value="${c.remark}" data-field="customRemark" data-id="${st.id}"
                 class="sub-student-input w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1" />
@@ -1174,7 +1174,7 @@
       const subInputsHtml = hr.subjects.map(sub => {
         const isQualT1 = (isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
         if (isQualT1 || isPriY1) {
-          return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">تحكم مقبول</span></td>`;
+          return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">تقييم وصفي نوعي</span></td>`;
         }
         const defaultVal = isPrimary ? 7 : 12;
         const val = st.grades[sub.id] !== undefined ? st.grades[sub.id] : defaultVal;
@@ -1217,14 +1217,14 @@
           <td class="p-2 text-center font-bold text-purple-900 bg-purple-50/40 num-cell">${isPriY1 ? '-' : c.finalWeightedSum.toFixed(2)}</td>
           <td class="p-2 text-center text-sm ${termAvgCls} num-cell">${isPriY1 ? 'وصفي' : c.termAvg.toFixed(2)}</td>
           <td class="p-1.5 text-center bg-slate-50/60">
-            <input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t2Avg}"
+            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t2Avg}"
               data-hr-student="${st.id}" data-hr-field="t2Avg"
-              class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />
+              class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
           <td class="p-1.5 text-center bg-slate-50/60">
-            <input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t3Avg}"
+            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t3Avg}"
               data-hr-student="${st.id}" data-hr-field="t3Avg"
-              class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />
+              class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
           <td class="p-2 text-center text-sm ${annualAvgCls} num-cell">${isPriY1 ? (c.autoPassEligible ? 'ينتقل آلياً' : 'غير مؤهل بعد') : c.annualAvg.toFixed(2)}</td>
           <td class="p-2 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>

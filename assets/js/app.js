@@ -360,7 +360,7 @@
     return state.homeroomByStage[stage] || state.homeroomByStage.secondary;
   }
   function normalizeStudentName(value) {
-    return String(value || '').normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('ar');
+    return String(value || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar');
   }
 
   function createStudentId(prefix) {
@@ -370,20 +370,20 @@
   }
 
   function normalizeImportHeader(value) {
-    return String(value || '').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('ar').replace(/[\\s_\\-./()]+/g, '');
+    return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('ar').replace(/[\s_\-./()]+/g, '');
   }
 
   function parseCsvRows(text) {
     const rows = [];
     let row = [], cell = '', quoted = false;
-    const source = String(text || '').replace(/^\\uFEFF/, '');
+    const source = String(text || '').replace(/^\uFEFF/, '');
     for (let i = 0; i < source.length; i++) {
       const ch = source[i];
       if (ch === '"' && quoted && source[i + 1] === '"') { cell += '"'; i++; }
       else if (ch === '"') quoted = !quoted;
-      else if ((ch === ',' || ch === ';' || ch === '\\t') && !quoted) { row.push(cell.trim()); cell = ''; }
-      else if ((ch === '\\n' || ch === '\\r') && !quoted) {
-        if (ch === '\\r' && source[i + 1] === '\\n') i++;
+      else if ((ch === ',' || ch === ';' || ch === '\t') && !quoted) { row.push(cell.trim()); cell = ''; }
+      else if ((ch === '\n' || ch === '\r') && !quoted) {
+        if (ch === '\r' && source[i + 1] === '\n') i++;
         row.push(cell.trim());
         if (row.some(value => value !== '')) rows.push(row);
         row = []; cell = '';
@@ -437,7 +437,7 @@
         const textCells = cells.filter(value => value.length >= 2 && !/^[0-9.,/-]+$/.test(value));
         name = textCells.length ? textCells.slice(0, 2).join(' ') : '';
       }
-      name = name.trim().replace(/\\s+/g, ' ');
+      name = name.trim().replace(/\s+/g, ' ');
       if (!name) return;
 
       const key = normalizeStudentName(name);
@@ -497,9 +497,9 @@
       url.searchParams.set('output', 'csv');
       return url.toString();
     }
-    const match = url.pathname.match(/\\/spreadsheets\\/d\\/([a-zA-Z0-9_-]+)/);
+    const match = url.pathname.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
     if (!match) throw new Error('الرابط لا يشير إلى جدول بيانات Google Sheets');
-    const gid = url.searchParams.get('gid') || (url.hash.match(/gid=(\\d+)/) || [])[1] || '0';
+    const gid = url.searchParams.get('gid') || (url.hash.match(/gid=(\d+)/) || [])[1] || '0';
     return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&gid=${gid}`;
   }
 

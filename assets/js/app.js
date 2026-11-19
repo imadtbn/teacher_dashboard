@@ -386,7 +386,8 @@
       cleanNames.forEach(name => {
         const key = normalizeStudentName(name);
         if (existing.has(key)) { skipped++; return; }
-        group.students.push({ id: createStudentId('st'), name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: 'A', customRemark: '', rubric: {} });
+        const studentKey = createStudentId('student');
+        group.students.push({ id: createStudentId('st'), studentKey, name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: 'A', customRemark: '', rubric: {} });
         existing.add(key);
         added++;
       });
@@ -399,7 +400,8 @@
         if (existing.has(key)) { skipped++; return; }
         const grades = {};
         homeroom.subjects.forEach(subject => { grades[subject.id] = 0; });
-        homeroom.students.push({ id: createStudentId('hr'), name, grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0 });
+        const linkedStudent = group && group.students.find(student => normalizeStudentName(student.name) === key);
+        homeroom.students.push({ id: createStudentId('hr'), studentKey: linkedStudent?.studentKey || createStudentId('student'), name, grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0 });
         existing.add(key);
         added++;
       });
@@ -1742,7 +1744,7 @@
       const stage = getActiveStage();
       const grp = getCurrentStageGroup(stage);
       grp.students.push({
-        id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'st_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        id: createStudentId('st'), studentKey: createStudentId('student'),
         name: '', cont: 0, devoir: 0, extra: 0, exam: 0,
         qualLevel: 'A', customRemark: '', rubric: {}
       });
@@ -1761,15 +1763,17 @@
       }
       grp.students.forEach(st => {
         const calc = computeStudentSubjectGrade(st, grp);
-        let hrStudent = hr.students.find(h => h.name.trim() === st.name.trim());
+        let hrStudent = hr.students.find(h => (st.studentKey && h.studentKey === st.studentKey) || h.name.trim() === st.name.trim());
         if (!hrStudent) {
           hrStudent = {
-            id: 'hrs_' + Date.now() + Math.random().toString(36).slice(2, 5),
+            id: createStudentId('hr'), studentKey: st.studentKey || createStudentId('student'),
             name: st.name, grades: {}, projectScore: 14, readingScore: 14,
             t2Avg: Number(calc.avg.toFixed(2)), t3Avg: Number(calc.avg.toFixed(2))
           };
           hr.students.push(hrStudent);
         }
+        if (!hrStudent.studentKey) hrStudent.studentKey = st.studentKey || createStudentId('student');
+        if (!st.studentKey) st.studentKey = hrStudent.studentKey;
         hrStudent.grades[targetSub.id] = Number(calc.avg.toFixed(2));
       });
       saveState();

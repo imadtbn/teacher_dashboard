@@ -117,7 +117,7 @@ test('CSV parser preserves decimal commas when semicolon is the delimiter', () =
 });
 
 test('schedule blocks a second test for the same subject in the same term', () => {
-  const existing = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-01' };
+  const existing = { stage: 'middle', groupId: 'g1', groupName: 'القسم 2م1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-01' };
   engine.setScheduleState({ assessmentSchedule: [existing], closedWeeks: [] });
   const candidate = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-04', correctionDate: '2026-11-05', remediationDate: '2026-11-06', examStartDate: '2026-11-15' };
   assert.match(engine.validateScheduledTest(candidate), /فرض مسجل مسبقاً/);
@@ -125,16 +125,16 @@ test('schedule blocks a second test for the same subject in the same term', () =
 
 test('schedule permits at most two tests per class per day', () => {
   const existing = [
-    { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'العربية', testDate: '2026-11-01' },
-    { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-01' }
+    { stage: 'middle', groupId: 'g1', groupName: 'القسم 2م1', term: 1, subjectName: 'العربية', testDate: '2026-11-01' },
+    { stage: 'middle', groupId: 'g2', groupName: 'القسم 2م1', term: 1, subjectName: 'الرياضيات', testDate: '2026-11-01' }
   ];
   engine.setScheduleState({ assessmentSchedule: existing, closedWeeks: [] });
-  const candidate = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'العلوم', testDate: '2026-11-01', correctionDate: '2026-11-02', remediationDate: '2026-11-03', examStartDate: '2026-11-15' };
+  const candidate = { stage: 'middle', groupId: 'g1', groupName: 'القسم 2م1', term: 1, subjectName: 'العلوم', testDate: '2026-11-01', correctionDate: '2026-11-02', remediationDate: '2026-11-03', examStartDate: '2026-11-15' };
   assert.match(engine.validateScheduledTest(candidate), /فرضين في اليوم/);
 });
 
 test('schedule blocks tests inside the closed week', () => {
-  engine.setScheduleState({ assessmentSchedule: [], closedWeeks: [{ stage: 'middle', groupId: 'g1', startDate: '2026-11-01', endDate: '2026-11-07' }] });
+  engine.setScheduleState({ assessmentSchedule: [], closedWeeks: [{ stage: 'middle', groupId: 'g2', groupName: 'القسم 2م1', startDate: '2026-11-01', endDate: '2026-11-07' }] });
   const candidate = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'العلوم', testDate: '2026-11-04', correctionDate: '2026-11-05', remediationDate: '2026-11-06', examStartDate: '2026-11-20' };
   assert.match(engine.validateScheduledTest(candidate), /الأسبوع المغلق/);
 });

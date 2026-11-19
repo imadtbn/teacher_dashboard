@@ -1267,6 +1267,8 @@
 
     document.getElementById('kpiHomeCount').textContent = String(count);
     document.getElementById('kpiHomeTermAvg').textContent = isPriY1 ? 'وصفي' : avgTerm.toFixed(2);
+    const termLabel = document.getElementById('kpiHomeTermLabel');
+    if (termLabel) termLabel.textContent = isPriY1 ? 'التقييم الوصفي للقسم' : 'المعدل الفصلي للقسم';
     document.getElementById('kpiHomeScaleLabel').textContent = isPriY1 ? 'لا يُحتسب معدل عددي' : `من ${scaleMax}`;
     const annualLabel = document.getElementById('kpiHomeAnnualLabel');
     const annualHint = document.getElementById('kpiHomeAnnualHint');

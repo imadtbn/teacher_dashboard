@@ -45,10 +45,11 @@ const server = http.createServer((request, response) => {
     const afterGroup = await page.evaluate(() => JSON.parse(localStorage.getItem('dz_teacher_grade_dashboard_v4_multi') || '{}'));
     assert.equal(afterGroup.groups?.length, 1, 'new group is persisted');
     await page.locator('#subjectYearLevelSelect').selectOption('p2');
+    await page.locator('#searchSubjectStudent').fill('');
     await page.locator('#btnAddStudentSubject').click();
     await page.waitForTimeout(200);
-    const afterAdd = await page.evaluate(() => ({ state: JSON.parse(localStorage.getItem('dz_teacher_grade_dashboard_v4_multi') || '{}'), table: document.getElementById('subjectTableBody')?.innerHTML, errors: document.body.innerText.slice(-500) }));
-    console.log('BROWSER_DEBUG_AFTER_ADD', JSON.stringify({ students: afterAdd.state.groups?.[0]?.students?.length, table: afterAdd.table, errors: afterAdd.errors }));
+    const afterAdd = await page.evaluate(() => ({ state: JSON.parse(localStorage.getItem('dz_teacher_grade_dashboard_v4_multi') || '{}'), table: document.getElementById('subjectTableBody')?.innerHTML, tab: document.querySelector('[data-stage-subtab].active')?.getAttribute('data-stage-subtab'), search: document.getElementById('searchSubjectStudent')?.value, stage: document.body.getAttribute('data-fixed-stage') }));
+    console.log('BROWSER_DEBUG_AFTER_ADD', JSON.stringify({ students: afterAdd.state.groups?.[0]?.students?.length, table: afterAdd.table, tab: afterAdd.tab, search: afterAdd.search, stage: afterAdd.stage, pageErrors }));
 
     const manualName = page.locator('#subjectTableBody input[data-field="name"]').first();
     assert.equal(await manualName.inputValue(), '', 'manual student name starts blank');

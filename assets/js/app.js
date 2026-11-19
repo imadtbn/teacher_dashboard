@@ -468,7 +468,7 @@
 
       const studentKey = createStudentId('student');
       if (wantsSubject) {
-        const student = { id: createStudentId('st'), studentKey, name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: 'A', customRemark: '', rubric: {} };
+        const student = { id: createStudentId('st'), studentKey, name, cont: 0, devoir: 0, extra: 0, exam: 0, qualLevel: '', customRemark: '', rubric: {} };
         if (hasHeader) {
           const max = stage === 'primary' ? 10 : 20;
           const cont = importNumber(cells, headers, ['التقييم المستمر','تقييم النشاطات','النشاطات','المستمر','continuous','cont'], 0, max);
@@ -600,7 +600,7 @@
     }
 
     let mtm = 0, avg = 0;
-    const qualInfo = QUALITATIVE_LEVELS.find(q => q.value === (student.qualLevel || 'A')) || QUALITATIVE_LEVELS[0];
+    const qualInfo = QUALITATIVE_LEVELS.find(q => q.value === student.qualLevel) || { value: '', label: 'لم يقيّم بعد', numEquiv: 0 };
 
     if (qualOnly) {
       avg = qualInfo.numEquiv;
@@ -1009,7 +1009,8 @@
             </td>
             <td class="p-2.5 text-center bg-sky-50/40">
               <select data-field="qualLevel" data-id="${escapeHtml(st.id)}" class="sub-student-input rounded-xl border border-sky-300 bg-white px-3 py-1.5 text-xs font-bold text-sky-950">
-                ${QUALITATIVE_LEVELS.map(q => `<option value="${q.value}" ${(st.qualLevel || 'A') === q.value ? 'selected' : ''}>${q.label}</option>`).join('')}
+                <option value="" disabled ${!st.qualLevel ? 'selected' : ''}>اختر مستوى التحكم</option>
+                ${QUALITATIVE_LEVELS.map(q => `<option value="${q.value}" ${st.qualLevel === q.value ? 'selected' : ''}>${q.label}</option>`).join('')}
               </select>
             </td>
             <td class="p-2.5">

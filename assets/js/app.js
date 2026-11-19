@@ -353,7 +353,10 @@
   function saveState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {}
+    } catch (e) {
+      console.error('تعذر حفظ بيانات لوحة الأستاذ:', e);
+      if (document.getElementById('toastContainer')) showToast('تعذر حفظ البيانات محلياً. تحقق من مساحة التخزين في المتصفح.', '⚠️');
+    }
     syncProfileUI();
   }
 

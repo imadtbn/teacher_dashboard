@@ -112,7 +112,7 @@ test('first-grade automatic promotion requires regular attendance', () => {
 });
 
 test('CSV parser preserves decimal commas when semicolon is the delimiter', () => {
-  const rows = engine.parseCsvRows('الاسم;التقييم المستمر\\n"بن علي، محمد";13,5');
+  const rows = engine.parseCsvRows('الاسم;التقييم المستمر\n"بن علي، محمد";13,5');
   assert.deepEqual(JSON.parse(JSON.stringify(rows)), [['الاسم', 'التقييم المستمر'], ['بن علي، محمد', '13,5']]);
 });
 

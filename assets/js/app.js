@@ -582,7 +582,7 @@
     if (termInput && group) termInput.value = String(group.term || 1);
 
     if (list) {
-      const entries = state.assessmentSchedule.filter(item => item.stage === stage && (!group || item.groupId === group.id));
+      const entries = state.assessmentSchedule.filter(item => item.stage === stage && (!group || normalizeStudentName(item.groupName) === normalizeStudentName(group.groupName)));
       list.innerHTML = entries.length ? entries.map(item => `
         <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs">
           <div><strong>${escapeHtml(item.subjectName)}</strong><span class="mx-1 text-slate-500">— الفصل ${escapeHtml(item.term)}</span><span class="text-slate-600">فرض: ${escapeHtml(item.testDate)}</span><span class="block text-slate-500">التصحيح: ${escapeHtml(item.correctionDate)} | المعالجة: ${escapeHtml(item.remediationDate)} | الاختبارات: ${escapeHtml(item.examStartDate)}</span></div>
@@ -590,7 +590,7 @@
         </div>`).join('') : '<p class="text-xs text-slate-500">لا توجد فروض مجدولة لهذا الفوج.</p>';
     }
     if (closedList) {
-      const ranges = state.closedWeeks.filter(item => item.stage === stage && (!group || item.groupId === group.id));
+      const ranges = state.closedWeeks.filter(item => item.stage === stage && (!group || normalizeStudentName(item.groupName) === normalizeStudentName(group.groupName)));
       closedList.innerHTML = ranges.length ? ranges.map(item => `
         <div class="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
           <span>أسبوع مغلق: ${escapeHtml(item.startDate)} إلى ${escapeHtml(item.endDate)}</span>
@@ -600,13 +600,13 @@
   }
 
   function validateScheduledTest(candidate) {
-    const sameGroup = item => item.stage === candidate.stage && item.groupId === candidate.groupId;
-    if (state.assessmentSchedule.some(item => sameGroup(item) && Number(item.term) === Number(candidate.term) && normalizeStudentName(item.subjectName) === normalizeStudentName(candidate.subjectName))) {
+    const sameClass = item => item.stage === candidate.stage && normalizeStudentName(item.groupName) === normalizeStudentName(candidate.groupName);
+    if (state.assessmentSchedule.some(item => sameClass(item) && Number(item.term) === Number(candidate.term) && normalizeStudentName(item.subjectName) === normalizeStudentName(candidate.subjectName))) {
       return 'يوجد فرض مسجل مسبقاً للمادة نفسها في هذا الفصل.';
     }
-    const sameDayCount = state.assessmentSchedule.filter(item => sameGroup(item) && item.testDate === candidate.testDate).length;
+    const sameDayCount = state.assessmentSchedule.filter(item => sameClass(item) && item.testDate === candidate.testDate).length;
     if (sameDayCount >= 2) return 'لا يمكن برمجة أكثر من فرضين في اليوم نفسه للقسم.';
-    const inClosedWeek = state.closedWeeks.some(item => sameGroup(item) && candidate.testDate >= item.startDate && candidate.testDate <= item.endDate);
+    const inClosedWeek = state.closedWeeks.some(item => sameClass(item) && candidate.testDate >= item.startDate && candidate.testDate <= item.endDate);
     if (inClosedWeek) return 'التاريخ المختار يقع ضمن الأسبوع المغلق.';
     if (candidate.testDate >= candidate.examStartDate) return 'يجب أن يسبق الفرض تاريخ انطلاق الاختبارات الفصلية.';
     const deadline = new Date(candidate.examStartDate + 'T00:00:00');
@@ -2265,11 +2265,11 @@
       const endDate = document.getElementById('closedWeekEnd').value;
       if (!startDate || !endDate || startDate > endDate) { showToast('أدخل بداية ونهاية صحيحتين للأسبوع المغلق.', '⚠️'); return; }
       const stage = getActiveStage();
-      const exists = state.closedWeeks.some(item => item.stage === stage && item.groupId === group.id && item.startDate === startDate && item.endDate === endDate);
+      const exists = state.closedWeeks.some(item => item.stage === stage && normalizeStudentName(item.groupName) === normalizeStudentName(group.groupName) && item.startDate === startDate && item.endDate === endDate);
       if (exists) { showToast('فترة الأسبوع المغلق مسجلة مسبقاً.', '⚠️'); return; }
-      const conflicts = state.assessmentSchedule.some(item => item.stage === stage && item.groupId === group.id && item.testDate >= startDate && item.testDate <= endDate);
+      const conflicts = state.assessmentSchedule.some(item => item.stage === stage && normalizeStudentName(item.groupName) === normalizeStudentName(group.groupName) && item.testDate >= startDate && item.testDate <= endDate);
       if (conflicts) { showToast('توجد فروض مجدولة داخل هذه الفترة؛ احذفها أو غيّر تواريخها أولاً.', '⚠️'); return; }
-      state.closedWeeks.push({ id: createStudentId('closed'), stage, groupId: group.id, startDate, endDate });
+      state.closedWeeks.push({ id: createStudentId('closed'), stage, groupId: group.id, groupName: group.groupName, startDate, endDate });
       saveState();
       renderScheduleManager();
       showToast('تم حفظ فترة الأسبوع المغلق.');

@@ -48,9 +48,7 @@ const server = http.createServer((request, response) => {
     await page.locator('#btnStageSubSubject').click();
     await page.locator('#searchSubjectStudent').fill('');
     await page.locator('#btnAddStudentSubject').click();
-    await page.waitForTimeout(200);
-    const afterAdd = await page.evaluate(() => ({ state: JSON.parse(localStorage.getItem('dz_teacher_grade_dashboard_v4_multi') || '{}'), table: document.getElementById('subjectTableBody')?.innerHTML, tab: document.querySelector('[data-stage-subtab].active')?.getAttribute('data-stage-subtab'), search: document.getElementById('searchSubjectStudent')?.value, stage: document.body.getAttribute('data-fixed-stage') }));
-    console.log('BROWSER_DEBUG_AFTER_ADD', JSON.stringify({ students: afterAdd.state.groups?.[0]?.students?.length, table: afterAdd.table, tab: afterAdd.tab, search: afterAdd.search, stage: afterAdd.stage, pageErrors }));
+    await page.locator('#subjectTableBody input[data-field="name"]').first().waitFor();
 
     const manualName = page.locator('#subjectTableBody input[data-field="name"]').first();
     assert.equal(await manualName.inputValue(), '', 'manual student name starts blank');

@@ -1795,20 +1795,35 @@
       const grp = getCurrentStageGroup(stage);
       aoa.push([`كشف نقاط مادة: ${grp.subjectName} — الفوج: ${grp.groupName} — المعامل: ${grp.coeff}`]);
       const hasExtra = (stage === 'secondary' && (grp.category === 'languages' || grp.category === 'practical'));
-      const headers = ['الرقم', 'اللقب والاسم', 'التقييم المستمر / النشاطات'];
-      if (stage !== 'primary') headers.push('علامة الفرض');
-      if (stage === 'middle') headers.push('معدل التقييم المستمر (م.ت.م)');
-      if (hasExtra) headers.push(grp.category === 'languages' ? 'التعبير الشفوي' : 'الأعمال التطبيقية');
-      headers.push(stage === 'primary' ? 'الاختبار (/10)' : 'علامة الاختبار (/40)', 'المعدل الفصلي للمادة', `الجداء (×${grp.coeff})`, 'الملاحظة وتبرير دفتر التقويم');
+      const qualitativeOnly = stage === 'primary' && isPrimaryQualitativeOnly(grp);
+      const activityOnly = stage === 'primary' && grp.category === 'pri_activity';
+      const headers = qualitativeOnly
+        ? ['الرقم', 'اللقب والاسم', 'مستوى التحكم', 'الملاحظة الوصفية']
+        : activityOnly
+          ? ['الرقم', 'اللقب والاسم', 'التقييم المستمر', 'المعدل الفصلي للمادة', 'الملاحظة']
+          : ['الرقم', 'اللقب والاسم', 'التقييم المستمر / النشاطات'];
+      if (!qualitativeOnly && !activityOnly) {
+        if (stage !== 'primary') headers.push('علامة الفرض');
+        if (stage === 'middle') headers.push('معدل التقييم المستمر (م.ت.م)');
+        if (hasExtra) headers.push(grp.category === 'languages' ? 'التعبير الشفوي' : 'الأعمال التطبيقية');
+        headers.push(stage === 'primary' ? 'الاختبار (/10)' : 'علامة الاختبار (/40)', 'المعدل الفصلي للمادة', `الجداء (×${grp.coeff})`, 'الملاحظة وتبرير دفتر التقويم');
+      }
       aoa.push(headers);
 
       grp.students.forEach((st, idx) => {
         const c = computeStudentSubjectGrade(st, grp);
+        if (qualitativeOnly) {
+          aoa.push([idx + 1, st.name, c.qualInfo.label, c.remark]);
+          return;
+        }
         const row = [idx + 1, st.name, Number(c.cont.toFixed(2))];
         if (stage !== 'primary') row.push(Number(c.devoir.toFixed(2)));
         if (stage === 'middle') row.push(Number(c.mtm.toFixed(2)));
         if (hasExtra) row.push(Number(c.extra.toFixed(2)));
-        row.push(Number((stage === 'primary' ? c.examOn10 : c.examOn40).toFixed(2)), Number(c.avg.toFixed(2)), Number(c.weighted.toFixed(2)), c.remark);
+        if (!activityOnly) row.push(Number((stage === 'primary' ? c.examOn10 : c.examOn40).toFixed(2)));
+        row.push(Number(c.avg.toFixed(2)));
+        if (!activityOnly) row.push(Number(c.weighted.toFixed(2)));
+        row.push(c.remark);
         aoa.push(row);
       });
     }

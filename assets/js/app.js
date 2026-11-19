@@ -1,5 +1,6 @@
 (function () {
-  const STORAGE_KEY = 'dz_teacher_grade_dashboard_v3_multi';
+  const STORAGE_KEY = 'dz_teacher_grade_dashboard_v4_multi';
+  const LEGACY_STORAGE_KEY = 'dz_teacher_grade_dashboard_v3_multi';
 
   const STAGE_META = {
     primary: {
@@ -245,137 +246,45 @@
   };
 
   function getDefaultState() {
+    const makeHomeroom = (stage, preset) => ({
+      stage, preset, className: '', activeTerm: 1,
+      subjects: JSON.parse(JSON.stringify(HOMEROOM_SUBJECT_PRESETS[preset] || [])),
+      students: []
+    });
     return {
-      teacherName: 'الأستاذ(ة): بن سالم عبد القادر',
-      schoolName: 'مؤسسة التربية والتعليم - سيدي داود (بومرداس)',
-      schoolYear: '2026 / 2027',
-      currentPage: 'home', // 'home' | 'primary' | 'middle' | 'secondary' | 'rules'
-      stageSubTab: {
-        primary: 'subject',
-        middle: 'subject',
-        secondary: 'subject'
-      },
-      activeGroupByStage: {
-        primary: 'grp_pri_1',
-        middle: 'grp_mid_1',
-        secondary: 'grp_sec_1'
-      },
-      groups: [
-        // Primary Groups
-        {
-          id: 'grp_pri_1',
-          stage: 'primary',
-          groupName: '3 ابتدائي ف1',
-          yearLevel: 'p3',
-          category: 'pri_core',
-          subjectName: 'اللغة العربية',
-          coeff: 1,
-          examScale: 10,
-          term: 1,
-          students: [
-            { id: 'p1', name: 'بلقاسم ريان', cont: 8.5, devoir: 8.0, extra: 8.5, exam: 8.0, qualLevel: 'A', customRemark: '', rubric: { p1: 3.5, p2: 3.0, p3: 2.0 } },
-            { id: 'p2', name: 'شتوح سيرين', cont: 9.5, devoir: 9.0, extra: 9.0, exam: 9.0, qualLevel: 'A', customRemark: '', rubric: { p1: 3.5, p2: 3.5, p3: 2.5 } },
-            { id: 'p3', name: 'علاوي آدم', cont: 6.5, devoir: 6.0, extra: 6.5, exam: 6.0, qualLevel: 'B', customRemark: '', rubric: { p1: 2.5, p2: 2.0, p3: 2.0 } },
-            { id: 'p4', name: 'مقراني يسرى', cont: 7.5, devoir: 7.0, extra: 7.5, exam: 8.0, qualLevel: 'A', customRemark: '', rubric: { p1: 3.0, p2: 2.5, p3: 2.0 } }
-          ]
-        },
-        {
-          id: 'grp_pri_2',
-          stage: 'primary',
-          groupName: '1 ابتدائي ف1 (وصفي)',
-          yearLevel: 'p1',
-          category: 'pri_core',
-          subjectName: 'الرياضيات',
-          coeff: 1,
-          examScale: 10,
-          term: 1,
-          students: [
-            { id: 'p1_1', name: 'حميدي أنس', cont: 9.0, devoir: 9.0, extra: 9.0, exam: 9.0, qualLevel: 'A', customRemark: '' },
-            { id: 'p1_2', name: 'قندوز مرام', cont: 8.0, devoir: 8.0, extra: 8.0, exam: 8.0, qualLevel: 'B', customRemark: '' },
-            { id: 'p1_3', name: 'زروقي لقمان', cont: 6.0, devoir: 6.0, extra: 6.0, exam: 6.0, qualLevel: 'C', customRemark: '' }
-          ]
-        },
-        // Middle School Groups
-        {
-          id: 'grp_mid_1',
-          stage: 'middle',
-          groupName: '4 متوسط ف1',
-          yearLevel: 'm4',
-          category: 'mid_standard',
-          subjectName: 'الرياضيات',
-          coeff: 4,
-          examScale: 20,
-          term: 1,
-          students: [
-            { id: 'm1', name: 'مسعودي آدم', cont: 16.5, devoir: 15.0, extra: 15.0, exam: 16.0, qualLevel: 'A', customRemark: '', rubric: { m1: 6.0, m2: 5.5, m3: 5.0 } },
-            { id: 'm2', name: 'رحماني آية', cont: 18.5, devoir: 19.0, extra: 18.0, exam: 18.0, qualLevel: 'A', customRemark: '', rubric: { m1: 6.5, m2: 6.0, m3: 6.0 } },
-            { id: 'm3', name: 'مراد إسلام', cont: 11.5, devoir: 10.0, extra: 11.0, exam: 10.5, qualLevel: 'B', customRemark: '', rubric: { m1: 4.5, m2: 3.5, m3: 3.5 } },
-            { id: 'm4', name: 'حمزاوي ريان', cont: 9.5, devoir: 8.0, extra: 9.0, exam: 8.5, qualLevel: 'C', customRemark: '', rubric: { m1: 4.0, m2: 3.0, m3: 2.5 } },
-            { id: 'm5', name: 'بختي ملاك', cont: 14.5, devoir: 13.5, extra: 14.0, exam: 14.0, qualLevel: 'A', customRemark: '', rubric: { m1: 5.5, m2: 4.5, m3: 4.5 } }
-          ]
-        },
-        // Secondary School Groups
-        {
-          id: 'grp_sec_1',
-          stage: 'secondary',
-          groupName: '2 ثانوي علوم تجريبية ف1',
-          yearLevel: 's2',
-          category: 'practical',
-          subjectName: 'العلوم الفيزيائية',
-          coeff: 4,
-          examScale: 20,
-          term: 1,
-          students: [
-            { id: 's1', name: 'بن عيسى عبد الرحمان', cont: 16.5, devoir: 15.0, extra: 17.0, exam: 16.0, qualLevel: 'A', customRemark: '', rubric: { c1: 8.5, c2: 8.0, e1: 8.5, e2: 8.5 } },
-            { id: 's2', name: 'بوزيدي مريم', cont: 18.5, devoir: 17.5, extra: 19.0, exam: 18.0, qualLevel: 'A', customRemark: '', rubric: { c1: 9.5, c2: 9.0, e1: 9.5, e2: 9.5 } },
-            { id: 's3', name: 'خليفي ياسين', cont: 13.5, devoir: 11.5, extra: 14.0, exam: 12.5, qualLevel: 'B', customRemark: '', rubric: { c1: 7.0, c2: 6.5, e1: 7.0, e2: 7.0 } },
-            { id: 's4', name: 'قاسمي سارة', cont: 15.5, devoir: 14.0, extra: 16.0, exam: 14.5, qualLevel: 'A', customRemark: '', rubric: { c1: 8.0, c2: 7.5, e1: 8.0, e2: 8.0 } },
-            { id: 's5', name: 'تواتي أيمن', cont: 11.0, devoir: 9.0, extra: 11.5, exam: 9.5, qualLevel: 'C', customRemark: '', rubric: { c1: 6.0, c2: 5.0, e1: 6.0, e2: 5.5 } },
-            { id: 's6', name: 'سليماني لينا', cont: 17.5, devoir: 16.5, extra: 18.0, exam: 17.0, qualLevel: 'A', customRemark: '', rubric: { c1: 9.0, c2: 8.5, e1: 9.0, e2: 9.0 } }
-          ]
-        }
-      ],
+      teacherName: '', schoolName: '', schoolYear: '2026 / 2027',
+      currentPage: 'home',
+      stageSubTab: { primary: 'subject', middle: 'subject', secondary: 'subject' },
+      activeGroupByStage: { primary: '', middle: '', secondary: '' },
+      groups: [],
       homeroomByStage: {
-        primary: {
-          stage: 'primary',
-          preset: 'pri_y3',
-          className: 'السنة 3 ابتدائي - الفوج 1',
-          activeTerm: 1,
-          subjects: JSON.parse(JSON.stringify(HOMEROOM_SUBJECT_PRESETS.pri_y3)),
-          students: [
-            { id: 'hp1', name: 'بلقاسم ريان', grades: { arab: 8.5, math: 8.0, fr: 7.5, en: 8.0, isl: 9.0, hist: 8.0, sci: 8.5, civ: 9.0, art: 9.5 }, projectScore: 10, readingScore: 10, t2Avg: 8.4, t3Avg: 8.6 },
-            { id: 'hp2', name: 'شتوح سيرين', grades: { arab: 9.5, math: 9.0, fr: 9.0, en: 9.0, isl: 9.5, hist: 9.0, sci: 9.5, civ: 9.5, art: 9.5 }, projectScore: 10, readingScore: 10, t2Avg: 9.3, t3Avg: 9.5 },
-            { id: 'hp3', name: 'علاوي آدم', grades: { arab: 6.5, math: 6.0, fr: 5.5, en: 6.0, isl: 7.5, hist: 6.5, sci: 6.5, civ: 7.5, art: 8.5 }, projectScore: 10, readingScore: 10, t2Avg: 6.8, t3Avg: 7.1 }
-          ]
-        },
-        middle: {
-          stage: 'middle',
-          preset: 'mid_y4',
-          className: 'السنة 4 متوسط - القسم 1',
-          activeTerm: 1,
-          subjects: JSON.parse(JSON.stringify(HOMEROOM_SUBJECT_PRESETS.mid_y4)),
-          students: [
-            { id: 'hm1', name: 'مسعودي آدم', grades: { arab: 15.0, math: 16.0, fr: 14.0, en: 14.5, hist: 15.5, phys: 16.0, snv: 15.5, isl: 17.0, civ: 16.5, sport: 18.0 }, projectScore: 15, readingScore: 15, t2Avg: 15.6, t3Avg: 16.0 },
-            { id: 'hm2', name: 'رحماني آية', grades: { arab: 18.0, math: 18.5, fr: 17.5, en: 18.0, hist: 18.0, phys: 18.5, snv: 18.0, isl: 19.0, civ: 18.5, sport: 18.5 }, projectScore: 18, readingScore: 18, t2Avg: 18.3, t3Avg: 18.6 },
-            { id: 'hm3', name: 'مراد إسلام', grades: { arab: 11.5, math: 10.5, fr: 10.0, en: 11.0, hist: 12.0, phys: 11.0, snv: 11.5, isl: 13.5, civ: 13.0, sport: 16.0 }, projectScore: 12, readingScore: 12, t2Avg: 11.8, t3Avg: 12.2 },
-            { id: 'hm4', name: 'حمزاوي ريان', grades: { arab: 9.5, math: 8.5, fr: 8.0, en: 9.0, hist: 9.5, phys: 8.5, snv: 9.0, isl: 11.5, civ: 11.0, sport: 15.0 }, projectScore: 10, readingScore: 10, t2Avg: 9.8, t3Avg: 10.4 }
-          ]
-        },
-        secondary: {
-          stage: 'secondary',
-          preset: 'sec_sci',
-          className: '2 ثانوي علوم تجريبية 1',
-          activeTerm: 1,
-          subjects: JSON.parse(JSON.stringify(HOMEROOM_SUBJECT_PRESETS.sec_sci)),
-          students: [
-            { id: 'hs1', name: 'بن عيسى عبد الرحمان', grades: { math: 15.5, phys: 16.1, snv: 15.0, arab: 14.5, fr: 13.5, en: 14.0, hist: 15.0, isl: 16.5, info: 16.0, sport: 17.5 }, projectScore: 16.0, readingScore: 15.0, t2Avg: 15.85, t3Avg: 16.20 },
-            { id: 'hs2', name: 'بوزيدي مريم', grades: { math: 18.0, phys: 18.2, snv: 17.5, arab: 17.0, fr: 16.5, en: 17.5, hist: 17.0, isl: 18.5, info: 18.0, sport: 18.0 }, projectScore: 18.5, readingScore: 18.0, t2Avg: 18.10, t3Avg: 18.35 },
-            { id: 'hs3', name: 'خليفي ياسين', grades: { math: 11.5, phys: 12.8, snv: 12.0, arab: 13.0, fr: 11.0, en: 11.5, hist: 13.5, isl: 14.0, info: 13.5, sport: 16.0 }, projectScore: 14.0, readingScore: 13.0, t2Avg: 12.90, t3Avg: 13.25 },
-            { id: 'hs4', name: 'قاسمي سارة', grades: { math: 14.0, phys: 14.9, snv: 14.5, arab: 15.0, fr: 14.5, en: 15.0, hist: 14.0, isl: 16.0, info: 15.5, sport: 17.0 }, projectScore: 16.5, readingScore: 16.0, t2Avg: 15.20, t3Avg: 15.45 }
-          ]
-        }
+        primary: makeHomeroom('primary', 'pri_y3'),
+        middle: makeHomeroom('middle', 'mid_y4'),
+        secondary: makeHomeroom('secondary', 'sec_sci')
       }
     };
+  }
+
+  function migrateLegacyState(parsed) {
+    if (!parsed || !Array.isArray(parsed.groups) || !parsed.homeroomByStage) return null;
+    const demoSubjectStudentIds = new Set(['p1','p2','p3','p4','p1_1','p1_2','p1_3','m1','m2','m3','m4','m5','s1','s2','s3','s4','s5','s6']);
+    const demoHomeroomStudentIds = new Set(['hp1','hp2','hp3','hm1','hm2','hm3','hm4','hs1','hs2','hs3','hs4']);
+    parsed.groups = parsed.groups.filter(Boolean).map(group => ({
+      ...group,
+      students: (Array.isArray(group.students) ? group.students : []).filter(student => student && !demoSubjectStudentIds.has(String(student.id)))
+    })).filter(group => group.students.length > 0 || (!/^grp_(pri|mid|sec)_1$/.test(String(group.id || '')) && group.id !== 'grp_pri_2'));
+    Object.values(parsed.homeroomByStage).forEach(hr => {
+      if (!hr) return;
+      hr.students = (Array.isArray(hr.students) ? hr.students : []).filter(student => student && !demoHomeroomStudentIds.has(String(student.id)));
+      if (/^(السنة 3 ابتدائي - الفوج 1|السنة 4 متوسط - القسم 1|2 ثانوي علوم تجريبية 1)$/.test(hr.className || '')) hr.className = '';
+    });
+    if (parsed.teacherName === 'الأستاذ(ة): بن سالم عبد القادر') parsed.teacherName = '';
+    if (parsed.schoolName === 'مؤسسة التربية والتعليم - سيدي داود (بومرداس)') parsed.schoolName = '';
+    parsed.activeGroupByStage = parsed.activeGroupByStage || { primary: '', middle: '', secondary: '' };
+    Object.keys(parsed.activeGroupByStage).forEach(stage => {
+      if (!parsed.groups.some(group => group.stage === stage && group.id === parsed.activeGroupByStage[stage])) parsed.activeGroupByStage[stage] = '';
+    });
+    return parsed;
   }
 
   let state = loadState();
@@ -385,14 +294,22 @@
 
   function loadState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.groups) && parsed.homeroomByStage) {
-          return parsed;
+      const currentRaw = localStorage.getItem(STORAGE_KEY);
+      if (currentRaw) {
+        const current = JSON.parse(currentRaw);
+        if (current && Array.isArray(current.groups) && current.homeroomByStage) return current;
+      }
+      const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacyRaw) {
+        const migrated = migrateLegacyState(JSON.parse(legacyRaw));
+        if (migrated) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          return migrated;
         }
       }
-    } catch (e) {}
+    } catch (error) {
+      console.error('تعذر تحميل بيانات لوحة الأستاذ:', error);
+    }
     return getDefaultState();
   }
 
@@ -542,8 +459,7 @@
     homeroom.subjects.forEach(sub => {
       if (isPrimary && Number(homeroom.activeTerm) === 1 && sub.qualInT1) return;
       const c = Math.max(1, parseInt(sub.coeff, 10) || 1);
-      const defaultGrade = isPrimary ? 6 : 10;
-      const g = clamp(student.grades[sub.id] !== undefined ? student.grades[sub.id] : defaultGrade, 0, scaleMax);
+      const g = clamp(student.grades && student.grades[sub.id] !== undefined ? student.grades[sub.id] : 0, 0, scaleMax);
       sumWeightedSubjects += g * c;
       sumCoeffs += c;
     });
@@ -1756,12 +1672,13 @@
     document.getElementById('btnExportExcel')?.addEventListener('click', exportToExcelFile);
     document.getElementById('btnPrintCurrent')?.addEventListener('click', () => window.print());
     document.getElementById('btnResetDemo')?.addEventListener('click', () => {
+      if (!window.confirm('سيتم مسح بيانات الأستاذ الحالية من هذا المتصفح وإعادة تهيئة لوحة فارغة. هل أنشأت نسخة احتياطية؟')) return;
       state = getDefaultState();
       saveState();
       const fixedStage = document.body.getAttribute('data-fixed-stage');
       if (fixedStage) renderStageWorkspace();
       else window.navigateAppPage(state.currentPage || 'home');
-      showToast('تمت استعادة البيانات النموذجية بنجاح', '🔄');
+      showToast('تمت إعادة تهيئة لوحة فارغة بنجاح', '🔄');
     });
 
     // Subject Mode Controls
@@ -1805,12 +1722,9 @@
     document.getElementById('btnAddStudentSubject')?.addEventListener('click', () => {
       const stage = getActiveStage();
       const grp = getCurrentStageGroup(stage);
-      const defVal = stage === 'primary' ? 7 : 12;
       grp.students.push({
-        id: 'st_' + Date.now(),
-        name: `تلميذ جديد ${grp.students.length + 1}`,
-        cont: defVal, devoir: defVal - 1, extra: defVal,
-        exam: stage === 'primary' ? 7 : (grp.examScale === 20 ? 12 : 24),
+        id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'st_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        name: '', cont: 0, devoir: 0, extra: 0, exam: 0,
         qualLevel: 'A', customRemark: '', rubric: {}
       });
       saveState();
@@ -1925,13 +1839,11 @@
     document.getElementById('btnAddHomeroomStudent')?.addEventListener('click', () => {
       const stage = getActiveStage();
       const hr = getStageHomeroom(stage);
-      const defGrade = stage === 'primary' ? 7 : 12;
       const grades = {};
-      hr.subjects.forEach(s => { grades[s.id] = defGrade; });
+      hr.subjects.forEach(subject => { grades[subject.id] = 0; });
       hr.students.push({
-        id: 'hrs_' + Date.now(),
-        name: `تلميذ جديد ${hr.students.length + 1}`,
-        grades, projectScore: 14, readingScore: 14, t2Avg: defGrade, t3Avg: defGrade
+        id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'hrs_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        name: '', grades, projectScore: 0, readingScore: 0, t2Avg: 0, t3Avg: 0
       });
       saveState();
       renderStageWorkspace();

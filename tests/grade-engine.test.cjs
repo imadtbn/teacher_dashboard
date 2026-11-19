@@ -144,3 +144,11 @@ test('schedule requires correction and remediation seven days before exams', () 
   const candidate = { stage: 'middle', groupId: 'g1', term: 1, subjectName: 'العلوم', testDate: '2026-11-01', correctionDate: '2026-11-09', remediationDate: '2026-11-10', examStartDate: '2026-11-15' };
   assert.match(engine.validateScheduledTest(candidate), /بسبعة أيام/);
 });
+
+test('secondary project and reading marks are flagged when reused from subject tests', () => {
+  const result = engine.computeHomeroomStudent(
+    { grades: { math: 14 }, projectScore: 15, readingScore: 14, examMarks: { math: 15 }, devoirMarks: { math: 14 }, t2Avg: 0, t3Avg: 0 },
+    { stage: 'secondary', preset: 'sec_sci', activeTerm: 1, subjects: [{ id: 'math', coeff: 1 }] }
+  );
+  assert.equal(result.warnings.length, 2);
+});

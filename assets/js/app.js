@@ -618,7 +618,7 @@
     const closedList = document.getElementById('closedWeeksList');
     const subjectInput = document.getElementById('scheduleSubject');
     const termInput = document.getElementById('scheduleTerm');
-    if (subjectInput && group && !subjectInput.value) subjectInput.value = group.subjectName || '';
+    if (subjectInput && group) subjectInput.value = group.subjectName || '';
     if (termInput && group) termInput.value = String(group.term || 1);
 
     if (list) {

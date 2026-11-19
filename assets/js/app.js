@@ -539,15 +539,15 @@
       list.innerHTML = entries.length ? entries.map(item => `
         <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs">
           <div><strong>${escapeHtml(item.subjectName)}</strong><span class="mx-1 text-slate-500">— الفصل ${item.term}</span><span class="text-slate-600">فرض: ${item.testDate}</span><span class="block text-slate-500">التصحيح: ${item.correctionDate} | المعالجة: ${item.remediationDate} | الاختبارات: ${item.examStartDate}</span></div>
-          <button type="button" data-delete-schedule="${item.id}" class="rounded bg-rose-50 px-2 py-1 font-bold text-rose-700">حذف</button>
+          <button type="button" data-delete-schedule="${escapeHtml(item.id)}" class="rounded bg-rose-50 px-2 py-1 font-bold text-rose-700">حذف</button>
         </div>`).join('') : '<p class="text-xs text-slate-500">لا توجد فروض مجدولة لهذا الفوج.</p>';
     }
     if (closedList) {
       const ranges = state.closedWeeks.filter(item => item.stage === stage && (!group || item.groupId === group.id));
       closedList.innerHTML = ranges.length ? ranges.map(item => `
         <div class="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
-          <span>أسبوع مغلق: ${item.startDate} إلى ${item.endDate}</span>
-          <button type="button" data-delete-closed-week="${item.id}" class="font-bold text-rose-700">حذف</button>
+          <span>أسبوع مغلق: ${escapeHtml(item.startDate)} إلى ${escapeHtml(item.endDate)}</span>
+          <button type="button" data-delete-closed-week="${escapeHtml(item.id)}" class="font-bold text-rose-700">حذف</button>
         </div>`).join('') : '<p class="text-xs text-slate-500">لم تُحدد فترة أسبوع مغلق لهذا الفوج.</p>';
     }
   }
@@ -739,7 +739,7 @@
       const hClassEl = document.getElementById(`homeStatHomeroom_${stg}`);
       if (gCountEl) gCountEl.textContent = `${grps.length} أفواج`;
       if (sCountEl) sCountEl.textContent = `${totalSubStudents} تلميذ`;
-      if (hClassEl) hClassEl.textContent = `${hr.className} (${hr.students.length} تلميذ)`;
+      if (hClassEl) hClassEl.textContent = `${escapeHtml(hr.className)} (${hr.students.length} تلميذ)`;
     });
   }
 
@@ -801,7 +801,7 @@
     const groupSelect = document.getElementById('selectSubjectGroup');
     if (groupSelect) {
       groupSelect.innerHTML = stageGroups.map(g =>
-        `<option value="${g.id}" ${g.id === group.id ? 'selected' : ''}>${g.groupName} — ${g.subjectName}</option>`
+        `<option value="${escapeHtml(g.id)}" ${g.id === group.id ? 'selected' : ''}>${escapeHtml(g.groupName)} — ${escapeHtml(g.subjectName)}</option>`
       ).join('');
     }
 
@@ -809,7 +809,7 @@
     if (levelSelect) {
       if (!meta.levels.some(l => l.value === group.yearLevel)) group.yearLevel = meta.levels[0].value;
       levelSelect.innerHTML = meta.levels.map(l =>
-        `<option value="${l.value}" ${l.value === group.yearLevel ? 'selected' : ''}>${l.label}</option>`
+        `<option value="${escapeHtml(l.value)}" ${l.value === group.yearLevel ? 'selected' : ''}>${escapeHtml(l.label)}</option>`
       ).join('');
     }
 
@@ -817,7 +817,7 @@
     if (catSelect) {
       if (!meta.categories.some(c => c.value === group.category)) group.category = meta.categories[0].value;
       catSelect.innerHTML = meta.categories.map(c =>
-        `<option value="${c.value}" ${c.value === group.category ? 'selected' : ''}>${c.label}</option>`
+        `<option value="${escapeHtml(c.value)}" ${c.value === group.category ? 'selected' : ''}>${escapeHtml(c.label)}</option>`
       ).join('');
     }
 
@@ -886,14 +886,14 @@
     const listEl = document.getElementById('validationAlertList');
     const allWarnings = [];
     computedList.forEach(item => {
-      item.calc.warnings.forEach(w => allWarnings.push(`التلميذ(ة) «${item.student.name}»: ${w}`));
+      item.calc.warnings.forEach(w => allWarnings.push(`التلميذ(ة) «${item.student.name}»: ${escapeHtml(w)}`));
     });
     const warnKpi = document.getElementById('kpiSubWarnings');
     if (warnKpi) warnKpi.textContent = String(allWarnings.length);
     if (box && listEl) {
       if (allWarnings.length > 0) {
         box.classList.remove('hidden');
-        listEl.innerHTML = allWarnings.slice(0, 5).map(w => `<li>${w} — انقر على «🧮 المعايير» لتوليد علامة موضوعية مستقلة.</li>`).join('');
+        listEl.innerHTML = allWarnings.slice(0, 5).map(w => `<li>${escapeHtml(w)} — انقر على «🧮 المعايير» لتوليد علامة موضوعية مستقلة.</li>`).join('');
       } else {
         box.classList.add('hidden');
       }
@@ -1004,20 +1004,20 @@
           <tr class="hover:bg-slate-50 transition">
             <td class="p-2.5 text-center font-bold text-slate-400 num-cell">${idx + 1}</td>
             <td class="p-2.5">
-              <input type="text" value="${st.name}" data-field="name" data-id="${st.id}"
+              <input type="text" value="${escapeHtml(st.name)}" data-field="name" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full bg-transparent font-bold text-slate-800 px-1.5 py-1 rounded" />
             </td>
             <td class="p-2.5 text-center bg-sky-50/40">
-              <select data-field="qualLevel" data-id="${st.id}" class="sub-student-input rounded-xl border border-sky-300 bg-white px-3 py-1.5 text-xs font-bold text-sky-950">
+              <select data-field="qualLevel" data-id="${escapeHtml(st.id)}" class="sub-student-input rounded-xl border border-sky-300 bg-white px-3 py-1.5 text-xs font-bold text-sky-950">
                 ${QUALITATIVE_LEVELS.map(q => `<option value="${q.value}" ${(st.qualLevel || 'A') === q.value ? 'selected' : ''}>${q.label}</option>`).join('')}
               </select>
             </td>
             <td class="p-2.5">
-              <input type="text" value="${c.remark}" data-field="customRemark" data-id="${st.id}"
+              <input type="text" value="${escapeHtml(c.remark)}" data-field="customRemark" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5" />
             </td>
             <td class="p-2.5 text-center no-print">
-              <button type="button" data-del-sub="${st.id}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
+              <button type="button" data-del-sub="${escapeHtml(st.id)}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
             </td>
           </tr>
         `;
@@ -1029,32 +1029,32 @@
           <tr class="hover:bg-slate-50 transition">
             <td class="p-2.5 text-center font-bold text-slate-400 num-cell">${idx + 1}</td>
             <td class="p-2.5">
-              <input type="text" value="${st.name}" data-field="name" data-id="${st.id}"
+              <input type="text" value="${escapeHtml(st.name)}" data-field="name" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full bg-transparent font-bold text-slate-800 px-1.5 py-1 rounded" />
             </td>
             <td class="p-2.5 text-center no-print">
-              <button type="button" data-rubric-id="${st.id}" class="btn-open-rubric px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200 text-xs font-bold">
+              <button type="button" data-rubric-id="${escapeHtml(st.id)}" class="btn-open-rubric px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200 text-xs font-bold">
                 🧮 الميادين
               </button>
             </td>
             <td class="p-2.5 text-center">
-              <input type="number" min="0" max="10" step="0.25" value="${st.cont}" data-field="cont" data-id="${st.id}"
+              <input type="number" min="0" max="10" step="0.25" value="${st.cont}" data-field="cont" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold" />
             </td>
             ${!isActivityNoExam ? `
               <td class="p-2.5 text-center">
-                <input type="number" min="0" max="10" step="0.25" value="${st.exam}" data-field="exam" data-id="${st.id}"
+                <input type="number" min="0" max="10" step="0.25" value="${st.exam}" data-field="exam" data-id="${escapeHtml(st.id)}"
                   class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold" />
               </td>
             ` : ''}
             <td class="p-2.5 text-center text-sm ${avgColor} num-cell">${c.avg.toFixed(2)}</td>
             <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${isPriY1 ? '—' : rankMap[st.id]}</td>
             <td class="p-2.5">
-              <input type="text" value="${c.remark}" data-field="customRemark" data-id="${st.id}"
+              <input type="text" value="${escapeHtml(c.remark)}" data-field="customRemark" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1" />
             </td>
             <td class="p-2.5 text-center no-print">
-              <button type="button" data-del-sub="${st.id}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
+              <button type="button" data-del-sub="${escapeHtml(st.id)}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
             </td>
           </tr>
         `;
@@ -1066,26 +1066,26 @@
       const contBorder = hasWarn ? 'border-amber-500 bg-amber-50' : 'border-slate-300';
 
       return `
-        <tr class="hover:bg-slate-50/90 transition" data-student-id="${st.id}">
+        <tr class="hover:bg-slate-50/90 transition" data-student-id="${escapeHtml(st.id)}">
           <td class="p-2.5 text-center font-bold text-slate-400 num-cell">${idx + 1}</td>
           <td class="p-2.5">
             <div class="flex items-center gap-1">
-              ${hasWarn ? `<span title="${c.warnings.join(' | ')}" class="text-amber-500 cursor-help">⚠️</span>` : ''}
-              <input type="text" value="${st.name}" data-field="name" data-id="${st.id}"
+              ${hasWarn ? `<span title="${escapeHtml(c.warnings.join(' | '))}" class="text-amber-500 cursor-help">⚠️</span>` : ''}
+              <input type="text" value="${escapeHtml(st.name)}" data-field="name" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full bg-transparent font-bold text-slate-800 px-1.5 py-1 rounded" />
             </div>
           </td>
           <td class="p-2.5 text-center no-print">
-            <button type="button" data-rubric-id="${st.id}" class="btn-open-rubric px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold shadow-sm">
+            <button type="button" data-rubric-id="${escapeHtml(st.id)}" class="btn-open-rubric px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold shadow-sm">
               🧮 المعايير
             </button>
           </td>
           <td class="p-2.5 text-center">
-            <input type="number" min="0" max="20" step="0.25" value="${st.cont}" data-field="cont" data-id="${st.id}"
+            <input type="number" min="0" max="20" step="0.25" value="${st.cont}" data-field="cont" data-id="${escapeHtml(st.id)}"
               class="sub-student-input num-input w-20 rounded-lg border ${contBorder} px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           <td class="p-2.5 text-center">
-            <input type="number" min="0" max="20" step="0.25" value="${st.devoir}" data-field="devoir" data-id="${st.id}"
+            <input type="number" min="0" max="20" step="0.25" value="${st.devoir}" data-field="devoir" data-id="${escapeHtml(st.id)}"
               class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           ${stage === 'middle' ? `
@@ -1093,12 +1093,12 @@
           ` : ''}
           ${hasExtra ? `
             <td class="p-2.5 text-center bg-teal-50/30">
-              <input type="number" min="0" max="20" step="0.25" value="${st.extra}" data-field="extra" data-id="${st.id}"
+              <input type="number" min="0" max="20" step="0.25" value="${st.extra}" data-field="extra" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input num-input w-20 rounded-lg border border-teal-300 px-2 py-1 text-xs sm:text-sm font-bold" />
             </td>
           ` : ''}
           <td class="p-2.5 text-center">
-            <input type="number" min="0" max="${maxExamInput}" step="0.25" value="${st.exam}" data-field="exam" data-id="${st.id}"
+            <input type="number" min="0" max="${maxExamInput}" step="0.25" value="${st.exam}" data-field="exam" data-id="${escapeHtml(st.id)}"
               class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           <td class="p-2.5 text-center font-bold text-amber-900 bg-amber-50/50 num-cell">${c.examOn40.toFixed(2)}</td>
@@ -1106,11 +1106,11 @@
           <td class="p-2.5 text-center font-bold text-purple-900 bg-purple-50/40 num-cell">${c.weighted.toFixed(2)}</td>
           <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
           <td class="p-2.5">
-            <input type="text" value="${c.remark}" data-field="customRemark" data-id="${st.id}"
+            <input type="text" value="${escapeHtml(c.remark)}" data-field="customRemark" data-id="${escapeHtml(st.id)}"
               class="sub-student-input w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1" />
           </td>
           <td class="p-2.5 text-center no-print">
-            <button type="button" data-del-sub="${st.id}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
+            <button type="button" data-del-sub="${escapeHtml(st.id)}" class="btn-del-sub-student text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
           </td>
         </tr>
       `;
@@ -1124,7 +1124,7 @@
     if (presetSel) {
       if (!meta.presets.some(p => p.value === hr.preset)) hr.preset = meta.presets[0].value;
       presetSel.innerHTML = meta.presets.map(p =>
-        `<option value="${p.value}" ${p.value === hr.preset ? 'selected' : ''}>${p.label}</option>`
+        `<option value="${escapeHtml(p.value)}" ${p.value === hr.preset ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
       ).join('');
     }
 
@@ -1155,7 +1155,7 @@
     }
 
     document.getElementById('homeroomTableTitle').textContent =
-      `الجدول الجامع لمجلس القسم — ${hr.className} (السلم: /${scaleMax} | مجموع المعاملات: ${totalCoeffs})`;
+      `الجدول الجامع لمجلس القسم — ${escapeHtml(hr.className)} (السلم: /${scaleMax} | مجموع المعاملات: ${totalCoeffs})`;
 
     const computedList = hr.students.map(st => ({
       student: st,
@@ -1187,7 +1187,7 @@
     const subjectColsHtml = hr.subjects.map(sub => {
       const isQualT1 = (isPrimary && Number(hr.activeTerm) === 1 && sub.qualInT1);
       return `<th class="p-2 text-center min-w-[78px] border-l border-slate-200 ${isQualT1 ? 'bg-sky-50 text-sky-900' : ''}">
-        <div class="truncate max-w-[95px]" title="${sub.name}">${sub.name}</div>
+        <div class="truncate max-w-[95px]" title="${escapeHtml(sub.name)}">${escapeHtml(sub.name)}</div>
         <div class="text-[10px] ${isQualT1 ? 'text-sky-700' : 'text-teal-700'} font-bold">${isQualT1 ? 'وصفي (ف1)' : `معامل ${sub.coeff}`}</div>
       </th>`;
     }).join('');
@@ -1237,7 +1237,7 @@
         return `
           <td class="p-1.5 text-center border-l border-slate-100">
             <input type="number" min="0" max="${scaleMax}" step="0.25" value="${val}"
-              data-hr-student="${st.id}" data-hr-sub="${sub.id}"
+              data-hr-student="${escapeHtml(st.id)}" data-hr-sub="${escapeHtml(sub.id)}"
               class="hr-grade-input num-input w-16 rounded-lg border border-slate-200 px-1.5 py-1 text-xs font-bold" />
           </td>
         `;
@@ -1246,12 +1246,12 @@
       const secCellsHtml = stage === 'secondary' ? `
         <td class="p-1.5 text-center bg-amber-50/40 border-l border-amber-100">
           <input type="number" min="0" max="20" step="0.25" value="${st.projectScore}"
-            data-hr-student="${st.id}" data-hr-field="projectScore"
+            data-hr-student="${escapeHtml(st.id)}" data-hr-field="projectScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
         </td>
         <td class="p-1.5 text-center bg-amber-50/40 border-l border-amber-100">
           <input type="number" min="0" max="20" step="0.25" value="${st.readingScore}"
-            data-hr-student="${st.id}" data-hr-field="readingScore"
+            data-hr-student="${escapeHtml(st.id)}" data-hr-field="readingScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
         </td>
         <td class="p-2 text-center font-extrabold text-amber-800 bg-amber-100/50 border-l border-amber-200 num-cell">+${c.totalBonus.toFixed(2)}</td>
@@ -1264,9 +1264,9 @@
         <tr class="hover:bg-slate-50 transition">
           <td class="p-2 text-center font-bold text-slate-400 num-cell">${idx + 1}</td>
           <td class="p-2 border-l border-slate-100">
-            <input type="text" value="${st.name}" data-hr-student="${st.id}" data-hr-field="name"
+            <input type="text" value="${escapeHtml(st.name)}" data-hr-student="${escapeHtml(st.id)}" data-hr-field="name"
               class="hr-meta-input w-full bg-transparent font-bold text-slate-800 px-1 py-0.5 rounded" />
-            ${isPriY1 ? `<label class="mt-1 flex items-center gap-1 text-[10px] font-semibold text-sky-800"><input type="checkbox" class="hr-attendance-input" data-hr-student="${st.id}" ${st.attendanceRegular === true ? 'checked' : ''} /> مواظب بانتظام (شرط الانتقال)</label>` : ''}
+            ${isPriY1 ? `<label class="mt-1 flex items-center gap-1 text-[10px] font-semibold text-sky-800"><input type="checkbox" class="hr-attendance-input" data-hr-student="${escapeHtml(st.id)}" ${st.attendanceRegular === true ? 'checked' : ''} /> مواظب بانتظام (شرط الانتقال)</label>` : ''}
           </td>
           ${subInputsHtml}
           ${secCellsHtml}
@@ -1274,12 +1274,12 @@
           <td class="p-2 text-center text-sm ${termAvgCls} num-cell">${isPriY1 ? 'وصفي' : c.termAvg.toFixed(2)}</td>
           <td class="p-1.5 text-center bg-slate-50/60">
             ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t2Avg}"
-              data-hr-student="${st.id}" data-hr-field="t2Avg"
+              data-hr-student="${escapeHtml(st.id)}" data-hr-field="t2Avg"
               class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
           <td class="p-1.5 text-center bg-slate-50/60">
             ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t3Avg}"
-              data-hr-student="${st.id}" data-hr-field="t3Avg"
+              data-hr-student="${escapeHtml(st.id)}" data-hr-field="t3Avg"
               class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
           <td class="p-2 text-center text-sm ${annualAvgCls} num-cell">${isPriY1 ? (c.autoPassEligible ? 'ينتقل آلياً' : 'غير مؤهل بعد') : c.annualAvg.toFixed(2)}</td>
@@ -1289,10 +1289,10 @@
           </td>
           <td class="p-2 text-center no-print">
             <div class="flex items-center justify-center gap-1">
-              <button type="button" data-report-id="${st.id}" class="btn-open-report px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-bold shadow-sm">
+              <button type="button" data-report-id="${escapeHtml(st.id)}" class="btn-open-report px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-bold shadow-sm">
                 📄 كشف
               </button>
-              <button type="button" data-del-hr="${st.id}" class="btn-del-hr-student px-1.5 py-1 rounded-lg text-rose-500 hover:bg-rose-50 text-xs font-bold">
+              <button type="button" data-del-hr="${escapeHtml(st.id)}" class="btn-del-hr-student px-1.5 py-1 rounded-lg text-rose-500 hover:bg-rose-50 text-xs font-bold">
                 ✕
               </button>
             </div>
@@ -1413,7 +1413,7 @@
     const subtitle = document.getElementById('rubricModalSubtitle');
 
     if (stage === 'primary') {
-      subtitle.textContent = `التلميذ(ة): ${st.name} — شبكة التقييم المستمر للطور الابتدائي (/10) وفق الصفحة 2 من المنشور 522/2026`;
+      subtitle.textContent = `التلميذ(ة): ${escapeHtml(st.name)} — شبكة التقييم المستمر للطور الابتدائي (/10) وفق الصفحة 2 من المنشور 522/2026`;
       container.innerHTML = `
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="bg-sky-50 p-3 rounded-xl border border-sky-200">
@@ -1431,7 +1431,7 @@
         </div>
       `;
     } else if (stage === 'middle') {
-      subtitle.textContent = `التلميذ(ة): ${st.name} — شبكة معايير تقييم نشاطات التلاميذ للطور المتوسط (/20) وفق الصفحة 3 من المنشور 522/2026`;
+      subtitle.textContent = `التلميذ(ة): ${escapeHtml(st.name)} — شبكة معايير تقييم نشاطات التلاميذ للطور المتوسط (/20) وفق الصفحة 3 من المنشور 522/2026`;
       container.innerHTML = `
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
@@ -1451,7 +1451,7 @@
     } else {
       const hasExtra = (group.category === 'languages' || group.category === 'practical');
       const extraTitle = group.category === 'languages' ? 'ثانياً: شبكة التعبير الشفوي (/20)' : 'ثانياً: شبكة الأعمال التطبيقية (/20)';
-      subtitle.textContent = `التلميذ(ة): ${st.name} — شبكة المراقبة المستمرة للطور الثانوي وفق الصفحة 5 من المنشور 522/2026`;
+      subtitle.textContent = `التلميذ(ة): ${escapeHtml(st.name)} — شبكة المراقبة المستمرة للطور الثانوي وفق الصفحة 5 من المنشور 522/2026`;
       container.innerHTML = `
         <div class="space-y-3">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1586,7 +1586,7 @@
       if (isQualT1 || c.isPriY1) {
         return `
           <tr class="border-b border-slate-200 bg-sky-50/40">
-            <td class="p-2.5 font-bold text-slate-800">${sub.name}</td>
+            <td class="p-2.5 font-bold text-slate-800">${escapeHtml(sub.name)}</td>
             <td class="p-2.5 text-center font-bold text-sky-900" colspan="3">تقييم وصفي نوعي (تحكم مقبول في الكفاءات المستهدفة)</td>
             <td class="p-2.5 text-xs text-sky-900">وفق المنشور 522/2026</td>
           </tr>
@@ -1597,7 +1597,7 @@
       const prod = grade * coeff;
       return `
         <tr class="border-b border-slate-200">
-          <td class="p-2.5 font-bold text-slate-800">${sub.name}</td>
+          <td class="p-2.5 font-bold text-slate-800">${escapeHtml(sub.name)}</td>
           <td class="p-2.5 text-center font-bold num-cell">${grade.toFixed(2)} / ${c.scaleMax}</td>
           <td class="p-2.5 text-center num-cell">${coeff}</td>
           <td class="p-2.5 text-center font-bold text-purple-900 num-cell">${prod.toFixed(2)}</td>
@@ -1627,10 +1627,10 @@
       <div class="border-2 border-slate-800 rounded-xl p-4 space-y-4">
         <div class="text-center border-b border-slate-300 pb-3">
           <div class="text-xs font-bold text-slate-600">الجمهورية الجزائرية الديمقراطية الشعبية — وزارة التربية الوطنية</div>
-          <div class="text-xs font-bold text-slate-700 mt-0.5">${state.schoolName || ''} — السنة الدراسية: ${state.schoolYear || '2026/2027'}</div>
-          <h4 class="text-base sm:text-lg font-extrabold text-slate-900 mt-1">كشف نقاط التلميذ(ة): ${st.name}</h4>
+          <div class="text-xs font-bold text-slate-700 mt-0.5">${escapeHtml(state.schoolName || '')} — السنة الدراسية: ${escapeHtml(state.schoolYear || '2026/2027')}</div>
+          <h4 class="text-base sm:text-lg font-extrabold text-slate-900 mt-1">كشف نقاط التلميذ(ة): ${escapeHtml(st.name)}</h4>
           <div class="text-xs font-semibold text-slate-600 mt-1">
-            القسم: <strong>${hr.className}</strong> | الأستاذ(ة): <strong>${state.teacherName || ''}</strong>
+            القسم: <strong>${escapeHtml(hr.className)}</strong> | الأستاذ(ة): <strong>${escapeHtml(state.teacherName || '')}</strong>
           </div>
         </div>
         <table class="w-full text-right border-collapse border border-slate-300 text-xs sm:text-sm">
@@ -1709,12 +1709,12 @@
     const subTab = state.stageSubTab[stage] || 'subject';
     const aoa = [];
     aoa.push(['الجمهورية الجزائرية الديمقراطية الشعبية - وزارة التربية الوطنية']);
-    aoa.push([`المؤسسة: ${state.schoolName || ''}`, `الأستاذ(ة): ${state.teacherName || ''}`, `السنة الدراسية: ${state.schoolYear || '2026/2027'}`]);
+    aoa.push([`المؤسسة: ${escapeHtml(state.schoolName || '')}`, `الأستاذ(ة): ${escapeHtml(state.teacherName || '')}`, `السنة الدراسية: ${escapeHtml(state.schoolYear || '2026/2027')}`]);
     aoa.push([]);
 
     if (subTab === 'homeroom') {
       const hr = getStageHomeroom(stage);
-      aoa.push([`كشف المعدلات الشامل للقسم: ${hr.className} (الفصل ${hr.activeTerm})`]);
+      aoa.push([`كشف المعدلات الشامل للقسم: ${escapeHtml(hr.className)} (الفصل ${hr.activeTerm})`]);
       const headers = ['الرقم', 'اللقب والاسم', ...hr.subjects.map(s => `${s.name} (معامل ${s.coeff})`)];
       if (stage === 'secondary') headers.push('المشاريع الدراسية (/20)', 'المطالعة (/20)', 'فائض النقاط (+)');
       headers.push('مجموع الجداءات', 'المعدل الفصلي', 'معدل الفصل 2', 'معدل الفصل 3', 'المعدل السنوي', 'قرار مجلس القسم');
@@ -2238,7 +2238,7 @@
       const hr = getStageHomeroom(getActiveStage());
       document.getElementById('subjectsConfigList').innerHTML = hr.subjects.map((sub, i) => `
         <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
-          <input type="text" value="${sub.name}" data-cfg-idx="${i}" data-cfg-field="name"
+          <input type="text" value="${escapeHtml(sub.name)}" data-cfg-idx="${i}" data-cfg-field="name"
             class="cfg-sub-input flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold" />
           <input type="number" min="1" max="10" value="${sub.coeff}" data-cfg-idx="${i}" data-cfg-field="coeff"
             class="cfg-sub-input num-input w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold" />

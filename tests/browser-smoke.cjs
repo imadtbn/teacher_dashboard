@@ -88,6 +88,12 @@ const server = http.createServer((request, response) => {
     await page.waitForTimeout(150);
     const widths = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
     assert.ok(widths.document <= widths.viewport + 2, `mobile horizontal overflow: ${JSON.stringify(widths)}`);
+    await page.locator('#btnCloseSchedule').click();
+    for (const route of ['middle.html', 'secondary.html', 'index.html', 'rules.html']) {
+      await page.goto(`http://127.0.0.1:4173/${route}`, { waitUntil: 'domcontentloaded' });
+      const dimensions = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
+      assert.ok(dimensions.document <= dimensions.viewport + 2, `mobile overflow on ${route}: ${JSON.stringify(dimensions)}`);
+    }
     assert.deepEqual(pageErrors, [], `browser runtime errors: ${pageErrors.join('; ')}`);
   } finally {
     await browser.close();

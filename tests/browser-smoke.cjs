@@ -91,7 +91,6 @@ const server = http.createServer((request, response) => {
     assert.equal(await page.locator('#subjectTableBody img').count(), 0, 'stored names remain escaped after reload');
 
     await page.locator('#btnOpenSchedule').click();
-    await page.locator('#scheduleSubject').fill('الرياضيات');
     await page.locator('#scheduleTerm').selectOption('1');
     await page.locator('#scheduleTestDate').fill('2026-11-20');
     await page.locator('#scheduleCorrectionDate').fill('2026-11-21');

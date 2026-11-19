@@ -1409,11 +1409,31 @@
   function renderAnalyticsForStage(stage) {
     if (typeof Chart === 'undefined') return;
     const source = document.getElementById('analyticsSourceSelect')?.value || 'subject';
+    const chartGrid = document.getElementById('analyticsChartsGrid');
+    const qualitativeNotice = document.getElementById('qualitativeAnalyticsNotice');
+    const activeGroup = source === 'subject' ? getCurrentStageGroup(stage) : null;
+    const activeHomeroom = source === 'homeroom' ? getStageHomeroom(stage) : null;
+    const qualitativeOnly = stage === 'primary' && (
+      (source === 'subject' && activeGroup && isPrimaryQualitativeOnly(activeGroup)) ||
+      (source === 'homeroom' && activeHomeroom?.preset === 'pri_y1')
+    );
+    if (chartInstances.brackets) chartInstances.brackets.destroy();
+    if (chartInstances.awards) chartInstances.awards.destroy();
+    if (chartInstances.components) chartInstances.components.destroy();
+    chartInstances = {};
+    if (qualitativeOnly) {
+      chartGrid?.classList.add('hidden');
+      qualitativeNotice?.classList.remove('hidden');
+      return;
+    }
+    chartGrid?.classList.remove('hidden');
+    qualitativeNotice?.classList.add('hidden');
     const mult = stage === 'primary' ? 2 : 1;
     let averagesNorm20 = [], thirdLabels = [], thirdValues = [];
 
     if (source === 'subject') {
-      const group = getCurrentStageGroup(stage);
+      const group = activeGroup;
+      if (!group) { chartGrid?.classList.add('hidden'); qualitativeNotice?.classList.remove('hidden'); if (qualitativeNotice) qualitativeNotice.textContent = 'لا توجد بيانات مادة لعرض إحصائياتها في هذا الفوج.'; return; }
       const computed = group.students.map(st => computeStudentSubjectGrade(st, group));
       averagesNorm20 = computed.map(c => c.avg * mult);
       const n = computed.length || 1;

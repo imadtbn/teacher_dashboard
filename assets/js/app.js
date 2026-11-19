@@ -2221,6 +2221,8 @@
       const stage = getActiveStage();
       const exists = state.closedWeeks.some(item => item.stage === stage && item.groupId === group.id && item.startDate === startDate && item.endDate === endDate);
       if (exists) { showToast('فترة الأسبوع المغلق مسجلة مسبقاً.', '⚠️'); return; }
+      const conflicts = state.assessmentSchedule.some(item => item.stage === stage && item.groupId === group.id && item.testDate >= startDate && item.testDate <= endDate);
+      if (conflicts) { showToast('توجد فروض مجدولة داخل هذه الفترة؛ احذفها أو غيّر تواريخها أولاً.', '⚠️'); return; }
       state.closedWeeks.push({ id: createStudentId('closed'), stage, groupId: group.id, startDate, endDate });
       saveState();
       renderScheduleManager();

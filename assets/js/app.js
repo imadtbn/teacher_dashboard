@@ -1102,7 +1102,7 @@
               </td>
             ` : ''}
             <td class="p-2.5 text-center text-sm ${avgColor} num-cell">${c.avg.toFixed(2)}</td>
-            <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${isPriY1 ? '—' : rankMap[st.id]}</td>
+            <td class="p-2.5 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
             <td class="p-2.5">
               <input type="text" value="${escapeHtml(c.remark)}" data-field="customRemark" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1" />

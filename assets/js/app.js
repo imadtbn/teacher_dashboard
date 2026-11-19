@@ -556,7 +556,8 @@
   function googleSheetsCsvUrl(value) {
     const url = new URL(String(value || '').trim());
     if (!['docs.google.com', 'drive.google.com'].includes(url.hostname)) throw new Error('أدخل رابط Google Sheets صالحاً');
-    if (url.pathname.includes('/spreadsheets/d/e/') && url.pathname.includes('/pub')) {
+    if (url.pathname.includes('/spreadsheets/d/e/') && (url.pathname.includes('/pub') || url.pathname.includes('/pubhtml'))) {
+      url.pathname = url.pathname.replace('/pubhtml', '/pub');
       url.searchParams.set('output', 'csv');
       return url.toString();
     }

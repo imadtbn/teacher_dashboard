@@ -1038,12 +1038,12 @@
               </button>
             </td>
             <td class="p-2.5 text-center">
-              <input type="number" min="0" max="10" step="0.25" value="${clamp(st.cont, 0, 20)}" data-field="cont" data-id="${escapeHtml(st.id)}"
+              <input type="number" min="0" max="10" step="0.25" value="${clamp(st.cont, 0, stage === 'primary' ? 10 : 20)}" data-field="cont" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold" />
             </td>
             ${!isActivityNoExam ? `
               <td class="p-2.5 text-center">
-                <input type="number" min="0" max="10" step="0.25" value="${clamp(st.exam, 0, 40)}" data-field="exam" data-id="${escapeHtml(st.id)}"
+                <input type="number" min="0" max="10" step="0.25" value="${clamp(st.exam, 0, stage === 'primary' ? 10 : 40)}" data-field="exam" data-id="${escapeHtml(st.id)}"
                   class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold" />
               </td>
             ` : ''}
@@ -1283,7 +1283,7 @@
               class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
           <td class="p-2 text-center text-sm ${annualAvgCls} num-cell">${isPriY1 ? (c.autoPassEligible ? 'ينتقل آلياً' : 'غير مؤهل بعد') : c.annualAvg.toFixed(2)}</td>
-          <td class="p-2 text-center font-bold text-slate-700 num-cell">${rankMap[st.id]}</td>
+          <td class="p-2 text-center font-bold text-slate-700 num-cell">${isPriY1 ? '—' : rankMap[st.id]}</td>
           <td class="p-2 text-center">
             <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${c.award.cls}">${c.award.label}</span>
           </td>
@@ -1664,11 +1664,11 @@
           </div>
           <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-center">
             <div class="text-xs font-bold text-indigo-800">المعدل السنوي</div>
-            <div class="text-xl font-extrabold text-indigo-950 mt-0.5 num-cell">${c.isPriY1 ? 'ينتقل آلياً' : `${c.annualAvg.toFixed(2)} / ${c.scaleMax}`}</div>
+            <div class="text-xl font-extrabold text-indigo-950 mt-0.5 num-cell">${c.isPriY1 ? (c.autoPassEligible ? 'ينتقل آلياً' : 'غير مؤهل بعد') : `${c.annualAvg.toFixed(2)} / ${c.scaleMax}`}</div>
           </div>
           <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
             <div class="text-xs font-bold text-slate-600">الرتبة في القسم</div>
-            <div class="text-xl font-extrabold text-slate-900 mt-0.5 num-cell">${rank} / ${hr.students.length}</div>
+            <div class="text-xl font-extrabold text-slate-900 mt-0.5 num-cell">${c.isPriY1 ? '—' : `${rank} / ${hr.students.length}`}</div>
           </div>
           <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
             <div class="text-xs font-bold text-amber-800">قرار مجلس القسم</div>

@@ -739,7 +739,7 @@
       const hClassEl = document.getElementById(`homeStatHomeroom_${stg}`);
       if (gCountEl) gCountEl.textContent = `${grps.length} أفواج`;
       if (sCountEl) sCountEl.textContent = `${totalSubStudents} تلميذ`;
-      if (hClassEl) hClassEl.textContent = `${escapeHtml(hr.className)} (${hr.students.length} تلميذ)`;
+      if (hClassEl) hClassEl.textContent = `${hr.className} (${hr.students.length} تلميذ)`;
     });
   }
 
@@ -886,7 +886,7 @@
     const listEl = document.getElementById('validationAlertList');
     const allWarnings = [];
     computedList.forEach(item => {
-      item.calc.warnings.forEach(w => allWarnings.push(`التلميذ(ة) «${item.student.name}»: ${escapeHtml(w)}`));
+      item.calc.warnings.forEach(w => allWarnings.push(`التلميذ(ة) «${item.student.name}»: ${w}`));
     });
     const warnKpi = document.getElementById('kpiSubWarnings');
     if (warnKpi) warnKpi.textContent = String(allWarnings.length);
@@ -1038,12 +1038,12 @@
               </button>
             </td>
             <td class="p-2.5 text-center">
-              <input type="number" min="0" max="10" step="0.25" value="${st.cont}" data-field="cont" data-id="${escapeHtml(st.id)}"
+              <input type="number" min="0" max="10" step="0.25" value="${clamp(st.cont, 0, 20)}" data-field="cont" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold" />
             </td>
             ${!isActivityNoExam ? `
               <td class="p-2.5 text-center">
-                <input type="number" min="0" max="10" step="0.25" value="${st.exam}" data-field="exam" data-id="${escapeHtml(st.id)}"
+                <input type="number" min="0" max="10" step="0.25" value="${clamp(st.exam, 0, 40)}" data-field="exam" data-id="${escapeHtml(st.id)}"
                   class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold" />
               </td>
             ` : ''}
@@ -1085,7 +1085,7 @@
               class="sub-student-input num-input w-20 rounded-lg border ${contBorder} px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           <td class="p-2.5 text-center">
-            <input type="number" min="0" max="20" step="0.25" value="${st.devoir}" data-field="devoir" data-id="${escapeHtml(st.id)}"
+            <input type="number" min="0" max="20" step="0.25" value="${clamp(st.devoir, 0, 20)}" data-field="devoir" data-id="${escapeHtml(st.id)}"
               class="sub-student-input num-input w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs sm:text-sm font-bold" />
           </td>
           ${stage === 'middle' ? `
@@ -1093,7 +1093,7 @@
           ` : ''}
           ${hasExtra ? `
             <td class="p-2.5 text-center bg-teal-50/30">
-              <input type="number" min="0" max="20" step="0.25" value="${st.extra}" data-field="extra" data-id="${escapeHtml(st.id)}"
+              <input type="number" min="0" max="20" step="0.25" value="${clamp(st.extra, 0, 20)}" data-field="extra" data-id="${escapeHtml(st.id)}"
                 class="sub-student-input num-input w-20 rounded-lg border border-teal-300 px-2 py-1 text-xs sm:text-sm font-bold" />
             </td>
           ` : ''}
@@ -1233,7 +1233,7 @@
           return `<td class="p-1.5 text-center bg-sky-50/40 border-l border-sky-100"><span class="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-bold">تقييم وصفي نوعي</span></td>`;
         }
         const defaultVal = isPrimary ? 7 : 12;
-        const val = st.grades[sub.id] !== undefined ? st.grades[sub.id] : defaultVal;
+        const val = clamp(st.grades && st.grades[sub.id] !== undefined ? st.grades[sub.id] : 0, 0, scaleMax);
         return `
           <td class="p-1.5 text-center border-l border-slate-100">
             <input type="number" min="0" max="${scaleMax}" step="0.25" value="${val}"
@@ -1245,12 +1245,12 @@
 
       const secCellsHtml = stage === 'secondary' ? `
         <td class="p-1.5 text-center bg-amber-50/40 border-l border-amber-100">
-          <input type="number" min="0" max="20" step="0.25" value="${st.projectScore}"
+          <input type="number" min="0" max="20" step="0.25" value="${clamp(st.projectScore, 0, 20)}"
             data-hr-student="${escapeHtml(st.id)}" data-hr-field="projectScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
         </td>
         <td class="p-1.5 text-center bg-amber-50/40 border-l border-amber-100">
-          <input type="number" min="0" max="20" step="0.25" value="${st.readingScore}"
+          <input type="number" min="0" max="20" step="0.25" value="${clamp(st.readingScore, 0, 20)}"
             data-hr-student="${escapeHtml(st.id)}" data-hr-field="readingScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
         </td>
@@ -1273,12 +1273,12 @@
           <td class="p-2 text-center font-bold text-purple-900 bg-purple-50/40 num-cell">${isPriY1 ? '-' : c.finalWeightedSum.toFixed(2)}</td>
           <td class="p-2 text-center text-sm ${termAvgCls} num-cell">${isPriY1 ? 'وصفي' : c.termAvg.toFixed(2)}</td>
           <td class="p-1.5 text-center bg-slate-50/60">
-            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t2Avg}"
+            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${clamp(st.t2Avg, 0, scaleMax)}"
               data-hr-student="${escapeHtml(st.id)}" data-hr-field="t2Avg"
               class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
           <td class="p-1.5 text-center bg-slate-50/60">
-            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${st.t3Avg}"
+            ${isPriY1 ? '—' : `<input type="number" min="0" max="${scaleMax}" step="0.25" value="${clamp(st.t3Avg, 0, scaleMax)}"
               data-hr-student="${escapeHtml(st.id)}" data-hr-field="t3Avg"
               class="hr-meta-input num-input w-16 rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold" />`}
           </td>
@@ -1714,7 +1714,7 @@
 
     if (subTab === 'homeroom') {
       const hr = getStageHomeroom(stage);
-      aoa.push([`كشف المعدلات الشامل للقسم: ${escapeHtml(hr.className)} (الفصل ${hr.activeTerm})`]);
+      aoa.push([`كشف المعدلات الشامل للقسم: ${hr.className} (الفصل ${hr.activeTerm})`]);
       const headers = ['الرقم', 'اللقب والاسم', ...hr.subjects.map(s => `${s.name} (معامل ${s.coeff})`)];
       if (stage === 'secondary') headers.push('المشاريع الدراسية (/20)', 'المطالعة (/20)', 'فائض النقاط (+)');
       headers.push('مجموع الجداءات', 'المعدل الفصلي', 'معدل الفصل 2', 'معدل الفصل 3', 'المعدل السنوي', 'قرار مجلس القسم');

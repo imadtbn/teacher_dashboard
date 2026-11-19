@@ -1267,10 +1267,14 @@
 
     document.getElementById('kpiHomeCount').textContent = String(count);
     document.getElementById('kpiHomeTermAvg').textContent = isPriY1 ? 'وصفي' : avgTerm.toFixed(2);
-    document.getElementById('kpiHomeScaleLabel').textContent = isPriY1 ? 'انتقال آلي' : `من ${scaleMax}`;
-    document.getElementById('kpiHomeAnnualAvg').textContent = isPriY1 ? 'آلي' : avgAnnual.toFixed(2);
+    document.getElementById('kpiHomeScaleLabel').textContent = isPriY1 ? 'لا يُحتسب معدل عددي' : `من ${scaleMax}`;
+    const annualLabel = document.getElementById('kpiHomeAnnualLabel');
+    const annualHint = document.getElementById('kpiHomeAnnualHint');
+    if (annualLabel) annualLabel.textContent = isPriY1 ? 'المؤهلون للانتقال الآلي' : 'المعدل السنوي للقسم';
+    if (annualHint) annualHint.textContent = isPriY1 ? 'يشترط إثبات المواظبة المنتظمة' : '(ف1 + ف2 + ف3) ÷ 3';
+    document.getElementById('kpiHomeAnnualAvg').textContent = isPriY1 ? `${passCount} / ${count}` : avgAnnual.toFixed(2);
     document.getElementById('kpiHomePassRate').textContent = `${passRate}%`;
-    document.getElementById('kpiHomePassCount').textContent = `${passCount} ناجح من ${count}`;
+    document.getElementById('kpiHomePassCount').textContent = isPriY1 ? `${passCount} مستوفٍ للمواظبة من ${count}` : `${passCount} ناجح من ${count}`;
     document.getElementById('kpiHomeBonusAvg').textContent = stage === 'secondary' ? `+${avgBonus.toFixed(2)}` : 'غير معني';
     document.getElementById('kpiHomeHonorCount').textContent = String(honorCount);
 

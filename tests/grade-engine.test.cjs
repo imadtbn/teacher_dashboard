@@ -9,7 +9,9 @@ function extractFunction(name) {
   const start = source.indexOf(`function ${name}(`);
   assert.notEqual(start, -1, `Missing function: ${name}`);
   const open = source.indexOf('{', start);
-  const close = source.indexOf('\n  }', open);
+  const nextFunction = source.indexOf('\n  function ', open + 1);
+  const segmentEnd = nextFunction < 0 ? source.length : nextFunction;
+  const close = source.lastIndexOf('\n  }', segmentEnd);
   assert.notEqual(close, -1, `Could not locate end of function: ${name}`);
   return source.slice(start, close + 4);
 }

@@ -257,6 +257,8 @@
       stageSubTab: { primary: 'subject', middle: 'subject', secondary: 'subject' },
       activeGroupByStage: { primary: '', middle: '', secondary: '' },
       groups: [],
+      assessmentSchedule: [],
+      closedWeeks: [],
       homeroomByStage: {
         primary: makeHomeroom('primary', 'pri_y3'),
         middle: makeHomeroom('middle', 'mid_y4'),
@@ -280,6 +282,8 @@
     });
     if (parsed.teacherName === 'الأستاذ(ة): بن سالم عبد القادر') parsed.teacherName = '';
     if (parsed.schoolName === 'مؤسسة التربية والتعليم - سيدي داود (بومرداس)') parsed.schoolName = '';
+    parsed.assessmentSchedule = Array.isArray(parsed.assessmentSchedule) ? parsed.assessmentSchedule : [];
+    parsed.closedWeeks = Array.isArray(parsed.closedWeeks) ? parsed.closedWeeks : [];
     parsed.activeGroupByStage = parsed.activeGroupByStage || { primary: '', middle: '', secondary: '' };
     Object.keys(parsed.activeGroupByStage).forEach(stage => {
       if (!parsed.groups.some(group => group.stage === stage && group.id === parsed.activeGroupByStage[stage])) parsed.activeGroupByStage[stage] = '';
@@ -512,6 +516,52 @@
     if (!match) throw new Error('الرابط لا يشير إلى جدول بيانات Google Sheets');
     const gid = url.searchParams.get('gid') || (url.hash.match(/gid=(\d+)/) || [])[1] || '0';
     return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&gid=${gid}`;
+  }
+
+  function renderScheduleManager() {
+    const stage = getActiveStage();
+    const group = getCurrentStageGroup(stage);
+    const list = document.getElementById('scheduleEntriesList');
+    const closedList = document.getElementById('closedWeeksList');
+    const subjectInput = document.getElementById('scheduleSubject');
+    const termInput = document.getElementById('scheduleTerm');
+    if (subjectInput && group && !subjectInput.value) subjectInput.value = group.subjectName || '';
+    if (termInput && group) termInput.value = String(group.term || 1);
+
+    if (list) {
+      const entries = state.assessmentSchedule.filter(item => item.stage === stage && (!group || item.groupId === group.id));
+      list.innerHTML = entries.length ? entries.map(item => `
+        <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs">
+          <div><strong>${escapeHtml(item.subjectName)}</strong><span class="mx-1 text-slate-500">— الفصل ${item.term}</span><span class="text-slate-600">فرض: ${item.testDate}</span><span class="block text-slate-500">التصحيح: ${item.correctionDate} | المعالجة: ${item.remediationDate} | الاختبارات: ${item.examStartDate}</span></div>
+          <button type="button" data-delete-schedule="${item.id}" class="rounded bg-rose-50 px-2 py-1 font-bold text-rose-700">حذف</button>
+        </div>`).join('') : '<p class="text-xs text-slate-500">لا توجد فروض مجدولة لهذا الفوج.</p>';
+    }
+    if (closedList) {
+      const ranges = state.closedWeeks.filter(item => item.stage === stage && (!group || item.groupId === group.id));
+      closedList.innerHTML = ranges.length ? ranges.map(item => `
+        <div class="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
+          <span>أسبوع مغلق: ${item.startDate} إلى ${item.endDate}</span>
+          <button type="button" data-delete-closed-week="${item.id}" class="font-bold text-rose-700">حذف</button>
+        </div>`).join('') : '<p class="text-xs text-slate-500">لم تُحدد فترة أسبوع مغلق لهذا الفوج.</p>';
+    }
+  }
+
+  function validateScheduledTest(candidate) {
+    const sameGroup = item => item.stage === candidate.stage && item.groupId === candidate.groupId;
+    if (state.assessmentSchedule.some(item => sameGroup(item) && Number(item.term) === Number(candidate.term) && normalizeStudentName(item.subjectName) === normalizeStudentName(candidate.subjectName))) {
+      return 'يوجد فرض مسجل مسبقاً للمادة نفسها في هذا الفصل.';
+    }
+    const sameDayCount = state.assessmentSchedule.filter(item => sameGroup(item) && item.testDate === candidate.testDate).length;
+    if (sameDayCount >= 2) return 'لا يمكن برمجة أكثر من فرضين في اليوم نفسه للقسم.';
+    const inClosedWeek = state.closedWeeks.some(item => sameGroup(item) && candidate.testDate >= item.startDate && candidate.testDate <= item.endDate);
+    if (inClosedWeek) return 'التاريخ المختار يقع ضمن الأسبوع المغلق.';
+    if (candidate.testDate >= candidate.examStartDate) return 'يجب أن يسبق الفرض تاريخ انطلاق الاختبارات الفصلية.';
+    const deadline = new Date(candidate.examStartDate + 'T00:00:00');
+    deadline.setDate(deadline.getDate() - 7);
+    const latestAllowed = deadline.toISOString().slice(0, 10);
+    if (candidate.correctionDate > latestAllowed || candidate.remediationDate > latestAllowed) return 'يجب إنهاء التصحيح والمعالجة قبل الاختبارات بسبعة أيام على الأقل.';
+    if (candidate.correctionDate < candidate.testDate || candidate.remediationDate < candidate.correctionDate) return 'تحقق من ترتيب تواريخ الفرض والتصحيح والمعالجة.';
+    return '';
   }
 
   function isPrimaryQualitativeOnly(group) {
@@ -2067,6 +2117,65 @@
       } finally {
         if (button) { button.disabled = false; button.textContent = 'استيراد من Google Sheets'; }
       }
+    });
+
+    // Assessment schedule controls and ministerial validation.
+    const scheduleModal = document.getElementById('modalSchedule');
+    const closeSchedule = () => { scheduleModal?.classList.add('hidden'); scheduleModal?.classList.remove('flex'); };
+    document.getElementById('btnOpenSchedule')?.addEventListener('click', () => {
+      renderScheduleManager();
+      scheduleModal?.classList.remove('hidden');
+      scheduleModal?.classList.add('flex');
+    });
+    document.getElementById('btnCloseSchedule')?.addEventListener('click', closeSchedule);
+    document.getElementById('btnSaveScheduledTest')?.addEventListener('click', () => {
+      const stage = getActiveStage();
+      const group = getCurrentStageGroup(stage);
+      if (!group) { showToast('أنشئ فوجاً قبل جدولة الفروض.', '⚠️'); return; }
+      const candidate = {
+        id: createStudentId('schedule'), stage, groupId: group.id, groupName: group.groupName,
+        subjectName: document.getElementById('scheduleSubject').value.trim(),
+        term: Number(document.getElementById('scheduleTerm').value),
+        testDate: document.getElementById('scheduleTestDate').value,
+        correctionDate: document.getElementById('scheduleCorrectionDate').value,
+        remediationDate: document.getElementById('scheduleRemediationDate').value,
+        examStartDate: document.getElementById('scheduleExamStartDate').value
+      };
+      if (!candidate.subjectName || !candidate.testDate || !candidate.correctionDate || !candidate.remediationDate || !candidate.examStartDate) {
+        showToast('أكمل المادة وجميع التواريخ المطلوبة.', '⚠️'); return;
+      }
+      const error = validateScheduledTest(candidate);
+      if (error) { showToast(error, '⚠️'); return; }
+      state.assessmentSchedule.push(candidate);
+      saveState();
+      renderScheduleManager();
+      showToast('تمت إضافة الفرض بعد اجتياز قيود الجدولة.');
+    });
+    document.getElementById('btnAddClosedWeek')?.addEventListener('click', () => {
+      const group = getCurrentStageGroup(getActiveStage());
+      if (!group) { showToast('أنشئ فوجاً أولاً.', '⚠️'); return; }
+      const startDate = document.getElementById('closedWeekStart').value;
+      const endDate = document.getElementById('closedWeekEnd').value;
+      if (!startDate || !endDate || startDate > endDate) { showToast('أدخل بداية ونهاية صحيحتين للأسبوع المغلق.', '⚠️'); return; }
+      const stage = getActiveStage();
+      const exists = state.closedWeeks.some(item => item.stage === stage && item.groupId === group.id && item.startDate === startDate && item.endDate === endDate);
+      if (exists) { showToast('فترة الأسبوع المغلق مسجلة مسبقاً.', '⚠️'); return; }
+      state.closedWeeks.push({ id: createStudentId('closed'), stage, groupId: group.id, startDate, endDate });
+      saveState();
+      renderScheduleManager();
+      showToast('تم حفظ فترة الأسبوع المغلق.');
+    });
+    document.getElementById('scheduleEntriesList')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-delete-schedule]');
+      if (!button) return;
+      state.assessmentSchedule = state.assessmentSchedule.filter(item => item.id !== button.getAttribute('data-delete-schedule'));
+      saveState(); renderScheduleManager();
+    });
+    document.getElementById('closedWeeksList')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-delete-closed-week]');
+      if (!button) return;
+      state.closedWeeks = state.closedWeeks.filter(item => item.id !== button.getAttribute('data-delete-closed-week'));
+      saveState(); renderScheduleManager();
     });
 
     // New Group Modal

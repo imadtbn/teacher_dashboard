@@ -657,8 +657,8 @@
     return '';
   }
 
-  function getMiddleExamDuration(subjectName, stage) {
-    if (stage !== 'middle') return null;
+  function getMiddleExamDuration(subjectName, stage, yearLevel) {
+    if (stage !== 'middle' || !['m1', 'm2', 'm3', 'm4'].includes(yearLevel)) return null;
     return /فرنسي|الفرنسية|french/i.test(String(subjectName || '')) ? 90 : null;
   }
 
@@ -957,7 +957,7 @@
           ? 'الطور الابتدائي (تربية موسيقية / تشكيلية / بدنية): تخضع للتقييم المستمر فقط (/10) دون اختبار فصلي.'
           : 'الطور الابتدائي: معدل المادة (/10) = (علامة التقييم المستمر للميادين + علامة الاختبار الفصلي) ÷ 2';
       } else if (stage === 'middle') {
-        const frenchDuration = getMiddleExamDuration(group.subjectName, stage);
+        const frenchDuration = getMiddleExamDuration(group.subjectName, stage, group.yearLevel);
         formulaBadge.textContent = 'الطور المتوسط: م.ت.م = (تقييم النشاطات + الفرض) ÷ 2  |  المعدل الفصلي للمادة = (م.ت.م + الاختبار/40) ÷ 3' +
           (frenchDuration ? '  |  مدة اختبار الفرنسية: ساعة ونصف (90 دقيقة) في جميع السنوات' : '');
       } else {

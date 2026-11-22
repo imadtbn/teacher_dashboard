@@ -51,6 +51,13 @@ const server = http.createServer((request, response) => {
     await page.locator('#btnAddStudentSubject').click();
     await page.locator('#subjectTableBody input[data-field="name"]').first().waitFor();
 
+    await page.locator('#subjectTableBody .btn-open-rubric').first().click();
+    await page.locator('#modalRubricCalc').waitFor({ state: 'visible' });
+    for (const selector of ['#rub_p1', '#rub_p2', '#rub_p3']) {
+      assert.equal(await page.locator(selector).inputValue(), '0', 'new rubric criteria must start at zero');
+    }
+    await page.locator('#btnCancelRubric').click();
+
     const manualName = page.locator('#subjectTableBody input[data-field="name"]').first();
     assert.equal(await manualName.inputValue(), '', 'manual student name starts blank');
     assert.equal(await page.locator('#subjectTableBody input[data-field="cont"]').first().inputValue(), '0');

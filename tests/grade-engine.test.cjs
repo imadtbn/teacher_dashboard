@@ -24,8 +24,8 @@ const declarations = [
     { value: 'D', label: 'تحكم أدنى', numEquiv: 3.5 }
   ];`,
   'let state = { assessmentSchedule: [], closedWeeks: [] };',
-  ...['clamp', 'escapeHtml', 'normalizeStudentName', 'parseCsvRows', 'googleSheetsCsvUrl', 'migrateLegacyState', 'isPrimaryQualitativeOnly', 'generatePedagogicalRemark', 'getCouncilAward', 'computeStudentSubjectGrade', 'computeHomeroomStudent', 'validateScheduledTest'].map(extractFunction),
-  'this.engine = { computeStudentSubjectGrade, computeHomeroomStudent, parseCsvRows, googleSheetsCsvUrl, escapeHtml, migrateLegacyState, validateScheduledTest, isPrimaryQualitativeOnly, setScheduleState(value) { state = value; } };'
+  ...['clamp', 'escapeHtml', 'normalizeStudentName', 'parseCsvRows', 'googleSheetsCsvUrl', 'migrateLegacyState', 'isPrimaryQualitativeOnly', 'generatePedagogicalRemark', 'getCouncilAward', 'computeStudentSubjectGrade', 'computeHomeroomStudent', 'validateScheduledTest', 'getMiddleExamDuration'].map(extractFunction),
+  'this.engine = { computeStudentSubjectGrade, computeHomeroomStudent, parseCsvRows, googleSheetsCsvUrl, escapeHtml, migrateLegacyState, validateScheduledTest, isPrimaryQualitativeOnly, getMiddleExamDuration, setScheduleState(value) { state = value; } };'
 ].join('\n');
 
 const sandbox = { URL };
@@ -192,4 +192,20 @@ test('unassessed first-grade student does not receive a default qualitative leve
   );
   assert.equal(result.qualInfo.label, 'لم يقيّم بعد');
   assert.equal(result.avg, 0);
+});
+
+test('empty assessment marks do not trigger duplicate-source warnings', () => {
+  const result = engine.computeStudentSubjectGrade(
+    { cont: 0, devoir: 0, exam: 0, extra: 0 },
+    { stage: 'middle', yearLevel: 'm1', category: 'mid_standard', examScale: 20, coeff: 1 }
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(result.warnings)), []);
+});
+
+test('French middle-school exams are identified as 90 minutes in every grade', () => {
+  for (const level of ['m1', 'm2', 'm3', 'm4']) {
+    assert.equal(engine.getMiddleExamDuration('اللغة الفرنسية', 'middle', level), 90);
+  }
+  assert.equal(engine.getMiddleExamDuration('الرياضيات', 'middle', 'm1'), null);
+  assert.equal(engine.getMiddleExamDuration('اللغة الفرنسية', 'secondary', 's1'), null);
 });

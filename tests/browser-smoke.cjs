@@ -116,6 +116,30 @@ const server = http.createServer((request, response) => {
       const dimensions = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
       assert.ok(dimensions.document <= dimensions.viewport + 2, `mobile overflow on ${route}: ${JSON.stringify(dimensions)}`);
     }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('http://127.0.0.1:4173/secondary.html', { waitUntil: 'domcontentloaded' });
+    await page.locator('#btnStageSubHomeroom').click();
+    await page.locator('#btnAddHomeroomStudent').click();
+    const homeroomName = page.locator('#homeroomTableBody input[data-hr-field="name"]').first();
+    await homeroomName.fill('تلميذ شبكة المشاريع');
+    await homeroomName.dispatchEvent('change');
+    await page.locator('#homeroomTableBody [data-hr-rubric="project"]').first().click();
+    await page.locator('#modalRubricCalc').waitFor({ state: 'visible' });
+    for (const selector of ['#hrRubric_r1', '#hrRubric_r2', '#hrRubric_r3', '#hrRubric_r4']) {
+      assert.equal(await page.locator(selector).inputValue(), '0', 'project rubric starts with zero');
+    }
+    for (const [selector, value] of [['#hrRubric_r1', '4'], ['#hrRubric_r2', '5'], ['#hrRubric_r3', '3'], ['#hrRubric_r4', '2']]) {
+      await page.locator(selector).fill(value);
+    }
+    assert.match(await page.locator('#rubricPreviewTotal').innerText(), /14/);
+    await page.locator('#btnApplyRubric').click();
+    assert.equal(await page.locator('#homeroomTableBody input[data-hr-field="projectScore"]').first().inputValue(), '14');
+    await page.locator('#homeroomTableBody [data-hr-rubric="reading"]').first().click();
+    for (const selector of ['#hrRubric_r1', '#hrRubric_r2', '#hrRubric_r3', '#hrRubric_r4']) {
+      assert.equal(await page.locator(selector).inputValue(), '0', 'reading rubric starts with zero');
+    }
+    await page.locator('#btnCancelRubric').click();
+
     assert.deepEqual(pageErrors, [], `browser runtime errors: ${pageErrors.join('; ')}`);
   } finally {
     await browser.close();

@@ -294,6 +294,7 @@
   let state = loadState();
   let searchSubjectQuery = '';
   let activeRubricStudentId = null;
+  let activeHomeroomRubricType = null;
   let pendingImportRows = null;
   let pendingImportSource = '';
   let chartInstances = { brackets: null, awards: null, components: null };
@@ -1358,12 +1359,14 @@
           <input type="number" min="0" max="20" step="0.25" value="${clamp(st.projectScore, 0, 20)}"
             data-hr-student="${escapeHtml(st.id)}" data-hr-field="projectScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
+          <button type="button" data-hr-rubric="project" data-hr-student="${escapeHtml(st.id)}" class="mt-1 rounded bg-white px-2 py-1 text-[10px] font-bold text-amber-900 border border-amber-300">${st.projectRubric ? 'تعديل الشبكة' : 'شبكة التقييم'}</button>
           <span class="block mt-1 max-w-[110px] text-[9px] leading-3 text-rose-700">${escapeHtml(c.warnings.join("، "))}</span>
         </td>
         <td class="p-1.5 text-center bg-amber-50/40 border-l border-amber-100">
           <input type="number" min="0" max="20" step="0.25" value="${clamp(st.readingScore, 0, 20)}"
             data-hr-student="${escapeHtml(st.id)}" data-hr-field="readingScore"
             class="hr-meta-input num-input w-16 rounded-lg border border-amber-300 px-1.5 py-1 text-xs font-bold" />
+          <button type="button" data-hr-rubric="reading" data-hr-student="${escapeHtml(st.id)}" class="mt-1 rounded bg-white px-2 py-1 text-[10px] font-bold text-amber-900 border border-amber-300">${st.readingRubric ? 'تعديل الشبكة' : 'شبكة التقييم'}</button>
           <span class="block mt-1 max-w-[110px] text-[9px] leading-3 text-rose-700">${escapeHtml(c.warnings.join("، "))}</span>
         </td>
         <td class="p-2 text-center font-extrabold text-amber-800 bg-amber-100/50 border-l border-amber-200 num-cell">+${c.totalBonus.toFixed(2)}</td>
@@ -1538,6 +1541,7 @@
     const st = group.students.find(s => s.id === studentId);
     if (!st) return;
     activeRubricStudentId = studentId;
+    activeHomeroomRubricType = null;
     if (!st.rubric) st.rubric = {};
     const r = st.rubric;
 
@@ -1619,11 +1623,51 @@
     modal.classList.add('flex');
   }
 
+  function openHomeroomRubricModal(studentId, type) {
+    const stage = getActiveStage();
+    if (stage !== 'secondary' || !['project', 'reading'].includes(type)) return;
+    const hr = getStageHomeroom(stage);
+    const student = hr.students.find(item => item.id === studentId);
+    if (!student) return;
+    activeRubricStudentId = studentId;
+    activeHomeroomRubricType = type;
+    const isProject = type === 'project';
+    const rubric = student[isProject ? 'projectRubric' : 'readingRubric'] || {};
+    const labels = isProject
+      ? ['تحديد الهدف والتخطيط', 'البحث وتوظيف المصادر', 'التعاون والمبادرة', 'جودة الإنجاز والعرض']
+      : ['الانتظام في المطالعة', 'فهم المقروء وتحليله', 'تلخيص الأفكار الأساسية', 'سلامة التعبير وإبداء الرأي'];
+    const title = isProject ? 'شبكة تقييم المشروع الدراسي' : 'شبكة تقييم المطالعة';
+    document.getElementById('rubricModalTitle').textContent = title;
+    document.getElementById('rubricModalSubtitle').textContent = `التلميذ(ة): ${student.name || 'دون اسم'} — أربعة معايير من 5 نقاط، المجموع /20`;
+    document.getElementById('rubricSectionsContainer').innerHTML = labels.map((label, index) => {
+      const key = 'r' + (index + 1);
+      return `<label class="block rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-950">
+        <span>${index + 1}. ${label} (/5)</span>
+        <input id="hrRubric_${key}" type="number" min="0" max="5" step="0.25" value="${rubric[key] !== undefined ? rubric[key] : 0}" class="rub-input num-input mt-2 w-full rounded-lg border border-amber-300 bg-white px-2 py-1.5 text-sm font-bold" />
+      </label>`;
+    }).join('');
+    recalcRubricModalPreview();
+    const modal = document.getElementById('modalRubricCalc');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
   function recalcRubricModalPreview() {
     const stage = getActiveStage();
     const group = getCurrentStageGroup(stage);
     const previewEl = document.getElementById('rubricPreviewTotal');
     const justifEl = document.getElementById('rubricGeneratedJustification');
+
+    if (activeHomeroomRubricType) {
+      const labels = activeHomeroomRubricType === 'project'
+        ? ['تحديد الهدف والتخطيط', 'البحث وتوظيف المصادر', 'التعاون والمبادرة', 'جودة الإنجاز والعرض']
+        : ['الانتظام في المطالعة', 'فهم المقروء وتحليله', 'تلخيص الأفكار الأساسية', 'سلامة التعبير وإبداء الرأي'];
+      const values = [1, 2, 3, 4].map(index => clamp(document.getElementById('hrRubric_r' + index)?.value, 0, 5));
+      const total = values.reduce((sum, value) => sum + value, 0);
+      previewEl.textContent = `${total.toFixed(2)} / 20`;
+      justifEl.value = labels.map((label, index) => `${label}: ${values[index]}/5`).join(' | ');
+      return;
+    }
 
     if (stage === 'primary') {
       const p1 = clamp(document.getElementById('rub_p1')?.value, 0, 4);
@@ -1660,6 +1704,25 @@
 
   function applyRubricToStudent() {
     const stage = getActiveStage();
+    if (activeHomeroomRubricType) {
+      const hr = getStageHomeroom(stage);
+      const student = hr.students.find(item => item.id === activeRubricStudentId);
+      if (!student) return;
+      const type = activeHomeroomRubricType;
+      const values = [1, 2, 3, 4].map(index => clamp(document.getElementById('hrRubric_r' + index)?.value, 0, 5));
+      const total = Number(values.reduce((sum, value) => sum + value, 0).toFixed(2));
+      student[type + 'Rubric'] = Object.fromEntries(values.map((value, index) => ['r' + (index + 1), value]));
+      student[type + 'Score'] = total;
+      student[type + 'Justification'] = document.getElementById('rubricGeneratedJustification').value;
+      activeHomeroomRubricType = null;
+      saveState();
+      const modal = document.getElementById('modalRubricCalc');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      renderStageWorkspace();
+      showToast('تم اعتماد شبكة التقييم وحفظ تبريرات المعايير');
+      return;
+    }
     const group = getCurrentStageGroup(stage);
     const st = group.students.find(s => s.id === activeRubricStudentId);
     if (!st) return;
@@ -2151,7 +2214,11 @@
 
     // Rubric Modal Listeners
     const modalRubric = document.getElementById('modalRubricCalc');
-    const closeRubric = () => { modalRubric?.classList.add('hidden'); modalRubric?.classList.remove('flex'); };
+    const closeRubric = () => {
+      activeHomeroomRubricType = null;
+      modalRubric?.classList.add('hidden');
+      modalRubric?.classList.remove('flex');
+    };
     document.getElementById('btnCloseRubricModal')?.addEventListener('click', closeRubric);
     document.getElementById('btnCancelRubric')?.addEventListener('click', closeRubric);
     document.getElementById('rubricSectionsContainer')?.addEventListener('input', recalcRubricModalPreview);
@@ -2239,6 +2306,11 @@
     });
 
     document.getElementById('homeroomTableBody')?.addEventListener('click', (e) => {
+      const rubricBtn = e.target.closest('[data-hr-rubric]');
+      if (rubricBtn) {
+        openHomeroomRubricModal(rubricBtn.getAttribute('data-hr-student'), rubricBtn.getAttribute('data-hr-rubric'));
+        return;
+      }
       const reportBtn = e.target.closest('.btn-open-report');
       if (reportBtn) {
         openStudentReportModal(reportBtn.getAttribute('data-report-id'));

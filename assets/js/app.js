@@ -657,6 +657,11 @@
     return '';
   }
 
+  function getMiddleExamDuration(subjectName, stage) {
+    if (stage !== 'middle') return null;
+    return /فرنسي|الفرنسية|french/i.test(String(subjectName || '')) ? 90 : null;
+  }
+
   function isPrimaryQualitativeOnly(group) {
     if (group.stage !== 'primary') return false;
     if (group.yearLevel === 'p1') return true;
@@ -709,13 +714,14 @@
 
     const warnings = [];
     if (!isPrimary) {
-      if (Math.abs(cont - devoir) < 0.001 || Math.abs(cont - examOn20) < 0.001) {
-        warnings.push(`تطابق نقطة التقييم المستمر/النشاطات (${cont}) مع نقطة الفرض أو الاختبار`);
+      const sameAsAssessment = mark => mark > 0 && (Math.abs(mark - devoir) < 0.001 || Math.abs(mark - examOn20) < 0.001);
+      if (cont > 0 && sameAsAssessment(cont)) {
+        warnings.push(`تحقق من مصدر نقطة التقييم المستمر/النشاطات (${cont})؛ فهي تطابق نقطة الفرض أو الاختبار`);
       }
       if (group.stage === 'secondary' && (group.category === 'languages' || group.category === 'practical')) {
         const extraName = group.category === 'languages' ? 'التعبير الشفوي' : 'الأعمال التطبيقية';
-        if (Math.abs(extra - devoir) < 0.001 || Math.abs(extra - examOn20) < 0.001) {
-          warnings.push(`تطابق نقطة ${extraName} (${extra}) مع نقطة الفرض أو الاختبار`);
+        if (extra > 0 && sameAsAssessment(extra)) {
+          warnings.push(`تحقق من مصدر نقطة ${extraName} (${extra})؛ فهي تطابق نقطة الفرض أو الاختبار`);
         }
       }
     }
@@ -951,7 +957,9 @@
           ? 'الطور الابتدائي (تربية موسيقية / تشكيلية / بدنية): تخضع للتقييم المستمر فقط (/10) دون اختبار فصلي.'
           : 'الطور الابتدائي: معدل المادة (/10) = (علامة التقييم المستمر للميادين + علامة الاختبار الفصلي) ÷ 2';
       } else if (stage === 'middle') {
-        formulaBadge.textContent = 'الطور المتوسط: م.ت.م = (تقييم النشاطات + الفرض) ÷ 2  |  المعدل الفصلي للمادة = (م.ت.م + الاختبار/40) ÷ 3';
+        const frenchDuration = getMiddleExamDuration(group.subjectName, stage);
+        formulaBadge.textContent = 'الطور المتوسط: م.ت.م = (تقييم النشاطات + الفرض) ÷ 2  |  المعدل الفصلي للمادة = (م.ت.م + الاختبار/40) ÷ 3' +
+          (frenchDuration ? '  |  مدة اختبار الفرنسية: ساعة ونصف (90 دقيقة) في جميع السنوات' : '');
       } else {
         if (group.category === 'languages') {
           formulaBadge.textContent = 'الطور الثانوي (مواد اللغات): المعدل الفصلي للمادة = (التقييم المستمر + الفرض + التعبير الشفوي + الاختبار/40) ÷ 5';
@@ -1542,15 +1550,15 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="bg-sky-50 p-3 rounded-xl border border-sky-200">
             <label class="block text-xs font-extrabold text-sky-950 mb-1">أ- مشاركة التلميذ في القسم (/4)</label>
-            <input id="rub_p1" type="number" min="0" max="4" step="0.25" value="${r.p1 !== undefined ? r.p1 : 3.5}" class="rub-input num-input w-full rounded-lg border border-sky-300 px-2 py-1.5 text-sm font-bold" />
+            <input id="rub_p1" type="number" min="0" max="4" step="0.25" value="${r.p1 !== undefined ? r.p1 : 0}" class="rub-input num-input w-full rounded-lg border border-sky-300 px-2 py-1.5 text-sm font-bold" />
           </div>
           <div class="bg-sky-50 p-3 rounded-xl border border-sky-200">
             <label class="block text-xs font-extrabold text-sky-950 mb-1">ب- المنتجات الكتابية (/4)</label>
-            <input id="rub_p2" type="number" min="0" max="4" step="0.25" value="${r.p2 !== undefined ? r.p2 : 3.5}" class="rub-input num-input w-full rounded-lg border border-sky-300 px-2 py-1.5 text-sm font-bold" />
+            <input id="rub_p2" type="number" min="0" max="4" step="0.25" value="${r.p2 !== undefined ? r.p2 : 0}" class="rub-input num-input w-full rounded-lg border border-sky-300 px-2 py-1.5 text-sm font-bold" />
           </div>
           <div class="bg-sky-50 p-3 rounded-xl border border-sky-200">
             <label class="block text-xs font-extrabold text-sky-950 mb-1">ج- المنتجات الفنية والأداء العملي (/2)</label>
-            <input id="rub_p3" type="number" min="0" max="2" step="0.25" value="${r.p3 !== undefined ? r.p3 : 2.0}" class="rub-input num-input w-full rounded-lg border border-sky-300 px-2 py-1.5 text-sm font-bold" />
+            <input id="rub_p3" type="number" min="0" max="2" step="0.25" value="${r.p3 !== undefined ? r.p3 : 0}" class="rub-input num-input w-full rounded-lg border border-sky-300 px-2 py-1.5 text-sm font-bold" />
           </div>
         </div>
       `;
@@ -1560,15 +1568,15 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
             <label class="block text-xs font-extrabold text-emerald-950 mb-1">1. الانضباط والمواظبة (/7)</label>
-            <input id="rub_m1" type="number" min="0" max="7" step="0.25" value="${r.m1 !== undefined ? r.m1 : 6.0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
+            <input id="rub_m1" type="number" min="0" max="7" step="0.25" value="${r.m1 !== undefined ? r.m1 : 0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
           </div>
           <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
             <label class="block text-xs font-extrabold text-emerald-950 mb-1">2. أنشطة التعلم داخل القسم (/7)</label>
-            <input id="rub_m2" type="number" min="0" max="7" step="0.25" value="${r.m2 !== undefined ? r.m2 : 6.0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
+            <input id="rub_m2" type="number" min="0" max="7" step="0.25" value="${r.m2 !== undefined ? r.m2 : 0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
           </div>
           <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
             <label class="block text-xs font-extrabold text-emerald-950 mb-1">3. أنشطة التعلم خارج القسم (/6)</label>
-            <input id="rub_m3" type="number" min="0" max="6" step="0.25" value="${r.m3 !== undefined ? r.m3 : 5.0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
+            <input id="rub_m3" type="number" min="0" max="6" step="0.25" value="${r.m3 !== undefined ? r.m3 : 0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
           </div>
         </div>
       `;
@@ -1581,11 +1589,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
               <label class="block text-xs font-extrabold text-emerald-950 mb-1">1. الانضباط والمواظبة (/10)</label>
-              <input id="rub_c1" type="number" min="0" max="10" step="0.25" value="${r.c1 !== undefined ? r.c1 : 8.0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
+              <input id="rub_c1" type="number" min="0" max="10" step="0.25" value="${r.c1 !== undefined ? r.c1 : 0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
             </div>
             <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
               <label class="block text-xs font-extrabold text-emerald-950 mb-1">2. النشاط داخل القسم (/10)</label>
-              <input id="rub_c2" type="number" min="0" max="10" step="0.25" value="${r.c2 !== undefined ? r.c2 : 8.0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
+              <input id="rub_c2" type="number" min="0" max="10" step="0.25" value="${r.c2 !== undefined ? r.c2 : 0}" class="rub-input num-input w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-sm font-bold" />
             </div>
           </div>
           ${hasExtra ? `
@@ -1593,11 +1601,11 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div class="bg-teal-50 p-3 rounded-xl border border-teal-200">
                 <label class="block text-xs font-extrabold text-teal-950 mb-1">المعيار التطبيقي / الشفوي الأول (/10)</label>
-                <input id="rub_e1" type="number" min="0" max="10" step="0.25" value="${r.e1 !== undefined ? r.e1 : 8.0}" class="rub-input num-input w-full rounded-lg border border-teal-300 px-2 py-1.5 text-sm font-bold" />
+                <input id="rub_e1" type="number" min="0" max="10" step="0.25" value="${r.e1 !== undefined ? r.e1 : 0}" class="rub-input num-input w-full rounded-lg border border-teal-300 px-2 py-1.5 text-sm font-bold" />
               </div>
               <div class="bg-teal-50 p-3 rounded-xl border border-teal-200">
                 <label class="block text-xs font-extrabold text-teal-950 mb-1">المعيار التطبيقي / الشفوي الثاني (/10)</label>
-                <input id="rub_e2" type="number" min="0" max="10" step="0.25" value="${r.e2 !== undefined ? r.e2 : 8.0}" class="rub-input num-input w-full rounded-lg border border-teal-300 px-2 py-1.5 text-sm font-bold" />
+                <input id="rub_e2" type="number" min="0" max="10" step="0.25" value="${r.e2 !== undefined ? r.e2 : 0}" class="rub-input num-input w-full rounded-lg border border-teal-300 px-2 py-1.5 text-sm font-bold" />
               </div>
             </div>
           ` : ''}
